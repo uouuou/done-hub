@@ -140,6 +140,17 @@ export async function onLarkOAuthClicked(lark_client_id) {
   window.open(`https://open.feishu.cn/open-apis/authen/v1/authorize?redirect_uri=${redirect_uri}&app_id=${lark_client_id}&state=${state}`);
 }
 
+export async function onLinuxDoOAuthClicked(client_id, openInNewTab = false) {
+  const state = await getOAuthState();
+  if (!state) return;
+  let url = `https://connect.linux.do/oauth2/authorize?response_type=code&client_id=${client_id}&state=${state}`;
+  if (openInNewTab) {
+    window.open(url);
+  } else {
+    window.location.href = url;
+  }
+}
+
 export function useIsAdmin() {
   const { user } = useSelector((state) => state.account);
   if (!user) return false;

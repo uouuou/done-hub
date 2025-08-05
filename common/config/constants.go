@@ -44,6 +44,8 @@ var LarkAuthEnabled = false
 var TurnstileCheckEnabled = false
 var RegisterEnabled = true
 var OIDCAuthEnabled = false
+var LinuxDoOAuthEnabled = false
+var LinuxDoOAuthTrustLevelEnabled = false
 
 // 是否开启内容审查
 var EnableSafe = false
@@ -172,6 +174,10 @@ var OIDCClientSecret = ""
 var OIDCIssuer = ""
 var OIDCScopes = ""
 var OIDCUsernameClaims = ""
+
+var LinuxDoClientId = ""
+var LinuxDoClientSecret = ""
+var LinuxDoOAuthLowestTrustLevel = 1
 
 var QuotaForNewUser = 0
 var QuotaForInviter = 0
@@ -333,3 +339,11 @@ const (
 )
 
 type ContextKey string
+
+// linux do 用户信任等级
+const (
+	Basic   = 1 // 基础用户
+	Member  = 2 // 会员
+	Regular = 3 // 活跃用户
+	Leader  = 4 // 领导者
+)

@@ -502,7 +502,8 @@
     "usernameOrEmail": "用戶名/電郵",
     "usernameRequired": "用戶名/電郵為必填項",
     "wechatLoginInfo": "請使用微信掃描二維碼關注公眾號，輸入「驗證碼」獲取驗證碼（有效期三分鐘）",
-    "wechatVerificationCodeLogin": "微信驗證碼登錄"
+    "wechatVerificationCodeLogin": "微信驗證碼登錄",
+    "useLinuxDoLogin": "使用 LINUX DO 登入"
   },
   "menu": {
     "about": "關於",
@@ -740,7 +741,8 @@
     "usernameMinLength": "用戶名不能少於 3 個字符",
     "usernameRequired": "用戶名不能為空",
     "wechatBindSuccess": "微信帳戶綁定成功！",
-    "yourTokenIs": "你的訪問令牌是："
+    "yourTokenIs": "你的訪問令牌是：",
+    "bindLinuxDoAccount": "綁定LINUX DO帳號"
   },
   "redemption": "兌換",
   "redemptionPage": {
@@ -1125,7 +1127,22 @@
         "title": "系統設置",
         "updateServerAddress": "更新伺服器地址"
       },
-      "title": "系統設置"
+      "title": "系統設置",
+      "configureLinuxDoOAuthApp": {
+        "title": "配置 LINUX DO OAuth 應用程式",
+        "subTitle": "用以支援透過 LINUX DO 進行登入註冊，",
+        "manageLink": "點擊此處",
+        "manage": "管理你的 LINUX DO App",
+        "alert1": "Homepage URL 填寫",
+        "alert2": "，Authorization callback URL 填寫",
+        "clientId": "LINUX DO 用戶端 ID",
+        "clientSecret": "LINUX DO 用戶端密鑰",
+        "lowestTrustLevel": "LINUX DO 信任等級",
+        "clientIdPlaceholder": "輸入你註冊的 LINUX DO OAuth APP 的 ID",
+        "clientSecretPlaceholder": "敏感資訊不會傳送到前端顯示",
+        "lowestTrustLevelPlaceholder": "輸入需要限制的最低信任等級",
+        "saveButton": "儲存 LINUX DO OAuth 設定"
+      }
     }
   },
   "shimmer 映射": "shimmer 映射",
