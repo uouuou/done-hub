@@ -32,7 +32,8 @@ func (p *GeminiProvider) CreateGeminiChat(request *GeminiChatRequest) (*GeminiCh
 		return nil, errWithCode
 	}
 
-	if len(geminiResponse.Candidates) == 0 {
+	// 只有非 countTokens 请求才检查 candidates
+	if request.Action != "countTokens" && len(geminiResponse.Candidates) == 0 {
 		return nil, common.StringErrorWrapper("no candidates", "no_candidates", http.StatusInternalServerError)
 	}
 

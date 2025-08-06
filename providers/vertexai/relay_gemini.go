@@ -7,6 +7,7 @@ import (
 	"done-hub/providers/vertexai/category"
 	"done-hub/types"
 	"net/http"
+	"strings"
 )
 
 func (p *VertexAIProvider) CreateGeminiChat(request *gemini.GeminiChatRequest) (*gemini.GeminiChatResponse, *types.OpenAIErrorWithStatusCode) {
@@ -23,7 +24,11 @@ func (p *VertexAIProvider) CreateGeminiChat(request *gemini.GeminiChatRequest) (
 		return nil, openaiErr
 	}
 
-	if len(geminiResponse.Candidates) == 0 {
+	// 检查是否是 countTokens 请求（Vertex AI 版本）
+	isCountTokens := len(geminiResponse.Candidates) == 0 &&
+		(geminiResponse.UsageMetadata != nil || geminiResponse.TotalTokens > 0)
+
+	if !isCountTokens && len(geminiResponse.Candidates) == 0 {
 		return nil, common.StringErrorWrapper("no candidates", "no_candidates", http.StatusInternalServerError)
 	}
 
@@ -71,7 +76,8 @@ func (p *VertexAIProvider) getGeminiRequest(request *gemini.GeminiChatRequest) (
 		return nil, common.StringErrorWrapperLocal("vertexAI gemini provider not found", "vertexAI_err", http.StatusInternalServerError)
 	}
 
-	otherUrl := p.Category.GetOtherUrl(request.Stream)
+	// 根据 Action 确定正确的 URL
+	otherUrl := getVertexAIGeminiURL(request.Action, request.Stream)
 	modelName := p.Category.GetModelName(request.Model)
 
 	// 获取请求地址
@@ -110,6 +116,27 @@ func (p *VertexAIProvider) getGeminiRequest(request *gemini.GeminiChatRequest) (
 		return nil, errWithCode
 	}
 	return req, nil
+}
+
+// getVertexAIGeminiURL 根据 Action 和 Stream 返回正确的 Vertex AI URL
+func getVertexAIGeminiURL(action string, stream bool) string {
+	switch action {
+	case "countTokens":
+		return "countTokens"
+	case "streamGenerateContent":
+		return "streamGenerateContent?alt=sse"
+	case "generateContent":
+		if stream {
+			return "streamGenerateContent?alt=sse"
+		}
+		return "generateContent"
+	default:
+		// 对于其他 action，直接使用原始值
+		if stream && !strings.Contains(action, "stream") {
+			return "stream" + strings.Title(action) + "?alt=sse"
+		}
+		return action
+	}
 }
 
 func convertOpenAIUsage(geminiUsage *gemini.GeminiUsageMetadata) types.Usage {

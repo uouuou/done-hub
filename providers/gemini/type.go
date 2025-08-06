@@ -136,6 +136,7 @@ func init() {
 type GeminiChatRequest struct {
 	Model             string                     `json:"-"`
 	Stream            bool                       `json:"-"`
+	Action            string                     `json:"-"` // 添加 Action 字段
 	Contents          []GeminiChatContent        `json:"contents"`
 	SafetySettings    []GeminiChatSafetySettings `json:"safetySettings,omitempty"`
 	GenerationConfig  GeminiChatGenerationConfig `json:"generationConfig,omitempty"`
@@ -458,6 +459,12 @@ type GeminiChatResponse struct {
 	ModelVersion   string                   `json:"modelVersion,omitempty"`
 	Model          string                   `json:"model,omitempty"`
 	ResponseId     string                   `json:"responseId,omitempty"`
+
+	// Vertex AI countTokens 响应字段
+	TotalTokens             int                          `json:"totalTokens,omitempty"`
+	TotalBillableCharacters int                          `json:"totalBillableCharacters,omitempty"`
+	PromptTokensDetails     []GeminiUsageMetadataDetails `json:"promptTokensDetails,omitempty"`
+
 	GeminiErrorResponse
 }
 
