@@ -60,6 +60,17 @@ func ShouldDisableChannel(channelType int, err *types.OpenAIErrorWithStatusCode)
 
 // disable & notify
 func DisableChannel(channelId int, channelName string, reason string, sendNotify bool) {
+	// 检查渠道当前状态，避免重复禁用和重复发送邮件
+	channel, err := model.GetChannelById(channelId)
+	if err != nil {
+		return // 如果获取渠道信息失败，直接返回
+	}
+
+	// 如果渠道已经被禁用，不需要重复操作
+	if channel.Status == config.ChannelStatusAutoDisabled || channel.Status == config.ChannelStatusManuallyDisabled {
+		return
+	}
+
 	model.UpdateChannelStatusById(channelId, config.ChannelStatusAutoDisabled)
 	if !sendNotify {
 		return
