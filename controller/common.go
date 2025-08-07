@@ -7,7 +7,9 @@ import (
 	"done-hub/model"
 	"done-hub/types"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -60,6 +62,10 @@ func ShouldDisableChannel(channelType int, err *types.OpenAIErrorWithStatusCode)
 
 // disable & notify
 func DisableChannel(channelId int, channelName string, reason string, sendNotify bool) {
+	// 添加1-5秒随机延迟，防止多实例或并发下导致的重复操作和邮件推送
+	delay := time.Duration(rand.Intn(5)+1) * time.Second
+	time.Sleep(delay)
+
 	// 检查渠道当前状态，避免重复禁用和重复发送邮件
 	channel, err := model.GetChannelById(channelId)
 	if err != nil {
