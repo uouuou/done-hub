@@ -3,6 +3,7 @@ package claude
 import (
 	"done-hub/types"
 	"encoding/json"
+	"math"
 )
 
 const (
@@ -162,6 +163,60 @@ type Usage struct {
 	CacheCreation            any `json:"cache_creation,omitempty"`
 
 	ServerToolUse *ServerToolUse `json:"server_tool_use,omitempty"`
+}
+
+// UnmarshalJSON 自定义 JSON 解析，兼容浮点数 token 值
+func (u *Usage) UnmarshalJSON(data []byte) error {
+	// 先用 map[string]interface{} 解析所有字段
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// 创建一个新的 map 来存储处理后的数据
+	processedData := make(map[string]interface{})
+	for k, v := range raw {
+		processedData[k] = v // 默认保持原值
+	}
+
+	// 辅助函数：将 interface{} 转换为 int，处理浮点数（向上取整）
+	convertToInt := func(v interface{}) int {
+		switch val := v.(type) {
+		case float64:
+			return int(math.Ceil(val)) // 向上取整
+		case int:
+			return val
+		case json.Number:
+			if f, err := val.Float64(); err == nil {
+				return int(math.Ceil(f))
+			}
+		}
+		return 0
+	}
+
+	// 处理需要转换为整数的字段
+	tokenFields := []string{"input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"}
+	for _, field := range tokenFields {
+		if v, ok := raw[field]; ok {
+			processedData[field] = convertToInt(v)
+		}
+	}
+
+	// 将处理后的数据重新序列化
+	processedJSON, err := json.Marshal(processedData)
+	if err != nil {
+		return err
+	}
+
+	// 使用标准的 Unmarshal 将处理后的 JSON 解析到结构体
+	type UsageTemp Usage
+	var temp UsageTemp
+	if err := json.Unmarshal(processedJSON, &temp); err != nil {
+		return err
+	}
+
+	*u = Usage(temp)
+	return nil
 }
 
 type ServerToolUse struct {
