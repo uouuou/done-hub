@@ -20,7 +20,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -109,17 +108,10 @@ func (r *relayClaudeOnly) send() (err *types.OpenAIErrorWithStatusCode, done boo
 
 	r.claudeRequest.Model = r.modelName
 	// 内容审查
-	if config.EnableSafe {
-		for _, message := range r.claudeRequest.Messages {
-			if message.Content != nil {
-				CheckResult, _ := safty.CheckContent(message.Content)
-				if !CheckResult.IsSafe {
-					err = common.StringErrorWrapperLocal(CheckResult.Reason, CheckResult.Code, http.StatusBadRequest)
-					done = true
-					return
-				}
-			}
-		}
+	if safetyErr := r.performContentSafety(); safetyErr != nil {
+		err = safetyErr
+		done = true
+		return
 	}
 
 	if r.claudeRequest.Stream {
@@ -186,6 +178,48 @@ func (r *relayClaudeOnly) HandleStreamError(err *types.OpenAIErrorWithStatusCode
 	r.c.Writer.Flush()
 }
 
+// 公共工具函数
+
+// performContentSafety 执行内容安全检查
+func (r *relayClaudeOnly) performContentSafety() *types.OpenAIErrorWithStatusCode {
+	if !config.EnableSafe {
+		return nil
+	}
+
+	for _, message := range r.claudeRequest.Messages {
+		if message.Content != nil {
+			CheckResult, _ := safty.CheckContent(message.Content)
+			if !CheckResult.IsSafe {
+				return common.StringErrorWrapperLocal(CheckResult.Reason, CheckResult.Code, http.StatusBadRequest)
+			}
+		}
+	}
+	return nil
+}
+
+// convertFinishReason 转换停止原因从OpenAI格式到Claude格式
+func convertFinishReason(finishReason string) string {
+	switch finishReason {
+	case "stop":
+		return "end_turn"
+	case "length":
+		return "max_tokens"
+	case "tool_calls":
+		return "tool_use"
+	case "content_filter":
+		return "stop_sequence"
+	default:
+		return "end_turn"
+	}
+}
+
+// setStreamHeaders 设置流式响应的HTTP头
+func (r *relayClaudeOnly) setStreamHeaders() {
+	r.c.Header("Content-Type", "text/event-stream")
+	r.c.Header("Cache-Control", "no-cache")
+	r.c.Header("Connection", "keep-alive")
+}
+
 func CountTokenMessages(request *claude.ClaudeRequest, preCostType int) (int, error) {
 	if preCostType == config.PreContNotAll {
 		return 0, nil
@@ -236,17 +270,10 @@ func (r *relayClaudeOnly) sendCustomChannelWithClaudeFormat() (err *types.OpenAI
 	}
 
 	// 内容审查
-	if config.EnableSafe {
-		for _, message := range r.claudeRequest.Messages {
-			if message.Content != nil {
-				CheckResult, _ := safty.CheckContent(message.Content)
-				if !CheckResult.IsSafe {
-					err = common.StringErrorWrapperLocal(CheckResult.Reason, CheckResult.Code, http.StatusBadRequest)
-					done = true
-					return
-				}
-			}
-		}
+	if safetyErr := r.performContentSafety(); safetyErr != nil {
+		err = safetyErr
+		done = true
+		return
 	}
 
 	openaiRequest.Model = r.modelName
@@ -308,6 +335,16 @@ func (r *relayClaudeOnly) sendCustomChannelWithClaudeFormat() (err *types.OpenAI
 
 // convertClaudeToOpenAI 将Claude请求转换为OpenAI格式
 func (r *relayClaudeOnly) convertClaudeToOpenAI() (*types.ChatCompletionRequest, *types.OpenAIErrorWithStatusCode) {
+	return r.convertClaudeToOpenAIWithOptions(true) // 默认进行schema清理
+}
+
+// convertClaudeToOpenAIForVertexAI 专门为VertexAI渠道转换，不进行schema清理
+func (r *relayClaudeOnly) convertClaudeToOpenAIForVertexAI() (*types.ChatCompletionRequest, *types.OpenAIErrorWithStatusCode) {
+	return r.convertClaudeToOpenAIWithOptions(false) // 不进行schema清理
+}
+
+// convertClaudeToOpenAIWithOptions 将Claude请求转换为OpenAI格式，支持选项控制
+func (r *relayClaudeOnly) convertClaudeToOpenAIWithOptions(cleanSchema bool) (*types.ChatCompletionRequest, *types.OpenAIErrorWithStatusCode) {
 	openaiRequest := &types.ChatCompletionRequest{
 		Model:       r.claudeRequest.Model,
 		Messages:    make([]types.ChatCompletionMessage, 0),
@@ -535,8 +572,14 @@ func (r *relayClaudeOnly) convertClaudeToOpenAI() (*types.ChatCompletionRequest,
 		// 转换为 OpenAI 格式
 
 		for _, tool := range r.claudeRequest.Tools {
-			// 为直接Gemini渠道清理schema中的不兼容字段
-			cleanedParameters := r.cleanSchemaForDirectGemini(tool.InputSchema)
+			var parameters interface{}
+			if cleanSchema {
+				// 为直接Gemini渠道清理schema中的不兼容字段
+				parameters = r.cleanSchemaForDirectGemini(tool.InputSchema)
+			} else {
+				// VertexAI版本：直接使用原始的InputSchema，不进行清理
+				parameters = tool.InputSchema
+			}
 
 			// input_schema → parameters
 			openaiTool := &types.ChatCompletionTool{
@@ -544,244 +587,7 @@ func (r *relayClaudeOnly) convertClaudeToOpenAI() (*types.ChatCompletionRequest,
 				Function: types.ChatCompletionFunction{
 					Name:        tool.Name,
 					Description: tool.Description,
-					Parameters:  cleanedParameters, // 使用清理后的参数
-				},
-			}
-			tools = append(tools, openaiTool)
-		}
-		openaiRequest.Tools = tools
-
-		// 处理工具选择
-		if r.claudeRequest.ToolChoice != nil {
-			openaiRequest.ToolChoice = r.claudeRequest.ToolChoice
-		}
-	}
-
-	return openaiRequest, nil
-}
-
-// convertClaudeToOpenAIForVertexAI 专门为VertexAI渠道转换，不进行schema清理
-// VertexAI会在后续使用CleanGeminiRequestData进行清理
-func (r *relayClaudeOnly) convertClaudeToOpenAIForVertexAI() (*types.ChatCompletionRequest, *types.OpenAIErrorWithStatusCode) {
-	openaiRequest := &types.ChatCompletionRequest{
-		Model:       r.claudeRequest.Model,
-		Messages:    make([]types.ChatCompletionMessage, 0),
-		MaxTokens:   r.claudeRequest.MaxTokens,
-		Temperature: r.claudeRequest.Temperature,
-		TopP:        r.claudeRequest.TopP,
-		Stream:      r.claudeRequest.Stream,
-	}
-
-	// 处理 Stop 参数，过滤掉 null 值
-	if r.claudeRequest.StopSequences != nil {
-		openaiRequest.Stop = r.claudeRequest.StopSequences
-	}
-
-	// 处理系统消息
-	if r.claudeRequest.System != nil {
-
-		switch sys := r.claudeRequest.System.(type) {
-		case string:
-
-			openaiRequest.Messages = append(openaiRequest.Messages, types.ChatCompletionMessage{
-				Role:    types.ChatMessageRoleSystem,
-				Content: sys,
-			})
-		case []interface{}:
-
-			// 处理数组形式的系统消息 - 每个文本部分创建单独的系统消息
-			for _, item := range sys {
-				if itemMap, ok := item.(map[string]interface{}); ok {
-					if itemType, exists := itemMap["type"]; exists && itemType == "text" {
-						if text, textExists := itemMap["text"]; textExists {
-							if textStr, ok := text.(string); ok && textStr != "" {
-								openaiRequest.Messages = append(openaiRequest.Messages, types.ChatCompletionMessage{
-									Role:    types.ChatMessageRoleSystem,
-									Content: textStr,
-								})
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// 转换消息（与convertClaudeToOpenAI相同的逻辑，但不清理schema）
-	for _, msg := range r.claudeRequest.Messages {
-
-		openaiMsg := types.ChatCompletionMessage{
-			Role: msg.Role,
-		}
-
-		// 处理消息内容
-		switch content := msg.Content.(type) {
-		case string:
-
-			openaiMsg.Content = content
-			openaiRequest.Messages = append(openaiRequest.Messages, openaiMsg)
-		case []interface{}:
-			// 处理复杂内容
-			if msg.Role == "user" {
-				// 用户消息：先处理 tool_result，再处理 text
-				toolParts := make([]map[string]interface{}, 0)
-				textParts := make([]map[string]interface{}, 0)
-
-				for _, part := range content {
-					if partMap, ok := part.(map[string]interface{}); ok {
-						partType, _ := partMap["type"].(string)
-
-						switch partType {
-						case "tool_result":
-							if _, exists := partMap["tool_use_id"].(string); exists {
-								toolParts = append(toolParts, partMap)
-							}
-						case "text":
-							if _, exists := partMap["text"].(string); exists {
-								textParts = append(textParts, partMap)
-							}
-						}
-					}
-				}
-
-				// 处理 tool_result 部分
-				for _, tool := range toolParts {
-					toolContent := ""
-					if resultContent, exists := tool["content"]; exists {
-						if contentStr, ok := resultContent.(string); ok {
-							toolContent = contentStr
-						} else {
-							contentBytes, _ := json.Marshal(resultContent)
-							toolContent = string(contentBytes)
-						}
-					}
-
-					toolUseId, _ := tool["tool_use_id"].(string)
-
-					toolMsg := types.ChatCompletionMessage{
-						Role:       types.ChatMessageRoleTool,
-						Content:    toolContent,
-						ToolCallID: toolUseId,
-					}
-					openaiRequest.Messages = append(openaiRequest.Messages, toolMsg)
-				}
-
-				// 处理 text 部分
-				for _, textPart := range textParts {
-					if text, exists := textPart["text"].(string); exists && text != "" {
-						userMsg := types.ChatCompletionMessage{
-							Role:    types.ChatMessageRoleUser,
-							Content: text,
-						}
-						openaiRequest.Messages = append(openaiRequest.Messages, userMsg)
-					}
-				}
-			} else if msg.Role == "assistant" {
-				// 助手消息：分别处理 text 和 tool_use
-				textParts := make([]map[string]interface{}, 0)
-				toolCallParts := make([]map[string]interface{}, 0)
-
-				for _, part := range content {
-					if partMap, ok := part.(map[string]interface{}); ok {
-						partType, _ := partMap["type"].(string)
-
-						switch partType {
-						case "text":
-							if _, exists := partMap["text"].(string); exists {
-								textParts = append(textParts, partMap)
-							}
-						case "tool_use":
-							if _, exists := partMap["id"].(string); exists {
-								toolCallParts = append(toolCallParts, partMap)
-							}
-						}
-					}
-				}
-
-				// 处理 text 部分 - 每个文本部分创建单独的助手消息
-
-				for _, textPart := range textParts {
-					if text, ok := textPart["text"].(string); ok && text != "" {
-						assistantMsg := types.ChatCompletionMessage{
-							Role:    types.ChatMessageRoleAssistant,
-							Content: text,
-						}
-						openaiRequest.Messages = append(openaiRequest.Messages, assistantMsg)
-					}
-				}
-
-				// 处理 tool_use 部分 - 创建单独的助手消息，content 为 null
-				if len(toolCallParts) > 0 {
-					toolCalls := make([]*types.ChatCompletionToolCalls, 0)
-					for _, toolPart := range toolCallParts {
-						// 安全地获取工具调用信息
-						var toolId, toolName string
-						var input interface{}
-
-						if id, exists := toolPart["id"]; exists && id != nil {
-							if idStr, ok := id.(string); ok && idStr != "" {
-								toolId = idStr
-							}
-						}
-						if toolId == "" {
-							toolId = fmt.Sprintf("call_%d", time.Now().UnixNano())
-						}
-
-						if name, exists := toolPart["name"]; exists && name != nil {
-							if nameStr, ok := name.(string); ok && nameStr != "" {
-								toolName = nameStr
-							}
-						}
-						if toolName == "" {
-							continue // 跳过没有名称的工具调用
-						}
-
-						if inputData, exists := toolPart["input"]; exists {
-							input = inputData
-						} else {
-							input = map[string]interface{}{}
-						}
-
-						inputBytes, _ := json.Marshal(input)
-
-						toolCall := &types.ChatCompletionToolCalls{
-							Id:   toolId,
-							Type: types.ChatMessageRoleFunction,
-							Function: &types.ChatCompletionToolCallsFunction{
-								Name:      toolName,
-								Arguments: string(inputBytes),
-							},
-						}
-						toolCalls = append(toolCalls, toolCall)
-					}
-
-					assistantMsg := types.ChatCompletionMessage{
-						Role:      types.ChatMessageRoleAssistant,
-						Content:   nil,
-						ToolCalls: toolCalls,
-					}
-					openaiRequest.Messages = append(openaiRequest.Messages, assistantMsg)
-				}
-			}
-			continue // 跳过默认的 append
-		default:
-			openaiRequest.Messages = append(openaiRequest.Messages, openaiMsg)
-		}
-	}
-
-	// 处理工具定义 - VertexAI版本不进行schema清理
-	if len(r.claudeRequest.Tools) > 0 {
-		tools := make([]*types.ChatCompletionTool, 0)
-
-		for _, tool := range r.claudeRequest.Tools {
-			// VertexAI版本：直接使用原始的InputSchema，不进行清理
-			// 后续会通过CleanGeminiRequestData进行统一清理
-			openaiTool := &types.ChatCompletionTool{
-				Type: "function",
-				Function: types.ChatCompletionFunction{
-					Name:        tool.Name,
-					Description: tool.Description,
-					Parameters:  tool.InputSchema, // 直接使用原始schema
+					Parameters:  parameters,
 				},
 			}
 			tools = append(tools, openaiTool)
@@ -942,19 +748,7 @@ func (r *relayClaudeOnly) convertOpenAIResponseToClaude(openaiResponse *types.Ch
 	}
 
 	// 转换停止原因
-	stopReason := ""
-	switch choice.FinishReason {
-	case "stop":
-		stopReason = "end_turn"
-	case "length":
-		stopReason = "max_tokens"
-	case "tool_calls":
-		stopReason = "tool_use"
-	case "content_filter":
-		stopReason = "stop_sequence"
-	default:
-		stopReason = "end_turn"
-	}
+	stopReason := convertFinishReason(choice.FinishReason)
 
 	claudeResponse := &claude.ClaudeResponse{
 		Id:           "msg_" + openaiResponse.ID,
@@ -1004,9 +798,7 @@ func (r *relayClaudeOnly) convertOpenAIResponseToClaude(openaiResponse *types.Ch
 // convertOpenAIStreamToClaude 将OpenAI流式响应转换为Claude格式
 func (r *relayClaudeOnly) convertOpenAIStreamToClaude(stream requester.StreamReaderInterface[string]) int64 {
 
-	r.c.Header("Content-Type", "text/event-stream")
-	r.c.Header("Cache-Control", "no-cache")
-	r.c.Header("Connection", "keep-alive")
+	r.setStreamHeaders()
 
 	flusher, ok := r.c.Writer.(http.Flusher)
 	if !ok {
@@ -1531,54 +1323,24 @@ func (r *relayClaudeOnly) processToolCallDelta(toolCall map[string]interface{}, 
 	}
 }
 
-// writeSSEEvent 写入SSE事件 - 添加安全错误处理和连接状态检测（仅用于自定义渠道）
+// writeSSEEvent 统一的SSE事件写入函数，支持结构化数据和原始JSON字符串
 func (r *relayClaudeOnly) writeSSEEvent(eventType string, data interface{}, isClosed *bool) {
-	if *isClosed {
-		return
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			*isClosed = true
-		}
-	}()
-
-	// 检查客户端连接状态
-	select {
-	case <-r.c.Request.Context().Done():
-		// 客户端已断开连接
-		*isClosed = true
-		return
-	default:
-		// 连接正常，继续处理
-	}
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		*isClosed = true
-		return
-	}
-
-	_, err = fmt.Fprintf(r.c.Writer, "event: %s\ndata: %s\n\n", eventType, string(jsonData))
-	if err != nil {
-		// 检测常见的连接关闭错误
-		if strings.Contains(err.Error(), "broken pipe") ||
-			strings.Contains(err.Error(), "connection reset") ||
-			strings.Contains(err.Error(), "write: connection reset by peer") ||
-			strings.Contains(err.Error(), "client disconnected") {
-			*isClosed = true
-		}
-		return
-	}
-
-	// 立即flush数据，确保客户端能及时收到
-	if flusher, ok := r.c.Writer.(http.Flusher); ok {
-		flusher.Flush()
-	}
+	r.writeSSEEventInternal(eventType, data, isClosed, false)
 }
 
-// writeSSEEventRaw 直接发送原始JSON字符串，确保字段顺序正确（仅用于自定义渠道）
+// writeSSEEventRaw 直接发送原始JSON字符串
 func (r *relayClaudeOnly) writeSSEEventRaw(eventType, jsonData string, isClosed *bool) {
+	r.writeSSEEventInternal(eventType, jsonData, isClosed, true)
+}
+
+// writeSSEEventSafe 安全的SSE事件写入（不需要isClosed参数）
+func (r *relayClaudeOnly) writeSSEEventSafe(eventType string, data interface{}) {
+	var closed bool
+	r.writeSSEEventInternal(eventType, data, &closed, false)
+}
+
+// writeSSEEventInternal 内部统一的SSE事件写入实现
+func (r *relayClaudeOnly) writeSSEEventInternal(eventType string, data interface{}, isClosed *bool, isRawJSON bool) {
 	if *isClosed {
 		return
 	}
@@ -1597,6 +1359,18 @@ func (r *relayClaudeOnly) writeSSEEventRaw(eventType, jsonData string, isClosed 
 		return
 	default:
 		// 连接正常，继续处理
+	}
+
+	var jsonData string
+	if isRawJSON {
+		jsonData = data.(string)
+	} else {
+		jsonBytes, err := json.Marshal(data)
+		if err != nil {
+			*isClosed = true
+			return
+		}
+		jsonData = string(jsonBytes)
 	}
 
 	_, err := fmt.Fprintf(r.c.Writer, "event: %s\ndata: %s\n\n", eventType, jsonData)
@@ -1661,9 +1435,7 @@ func (r *relayClaudeOnly) handleBackgroundTaskInSetRequest() error {
 
 	if r.claudeRequest.Stream {
 		// 流式响应：立即结束连接
-		r.c.Header("Content-Type", "text/event-stream")
-		r.c.Header("Cache-Control", "no-cache")
-		r.c.Header("Connection", "keep-alive")
+		r.setStreamHeaders()
 
 		// 发送最简单的完成事件并立即结束
 		messageId := fmt.Sprintf("msg_bg_%d", utils.GetTimestamp())
@@ -1711,17 +1483,10 @@ func (r *relayClaudeOnly) sendVertexAIGeminiWithClaudeFormat() (err *types.OpenA
 	// }
 
 	// 内容审查
-	if config.EnableSafe {
-		for _, message := range r.claudeRequest.Messages {
-			if message.Content != nil {
-				CheckResult, _ := safty.CheckContent(message.Content)
-				if !CheckResult.IsSafe {
-					err = common.StringErrorWrapperLocal(CheckResult.Reason, CheckResult.Code, http.StatusBadRequest)
-					done = true
-					return
-				}
-			}
-		}
+	if safetyErr := r.performContentSafety(); safetyErr != nil {
+		err = safetyErr
+		done = true
+		return
 	}
 
 	// 2. 直接调用 VertexAI API（暂时使用现有的 provider，后续可以优化为直接 HTTP 调用）
@@ -1785,9 +1550,7 @@ func (r *relayClaudeOnly) sendVertexAIGeminiWithClaudeFormat() (err *types.OpenA
 func (r *relayClaudeOnly) convertOpenAIStreamToClaudeWithTransformer(stream requester.StreamReaderInterface[string], transformManager *transformer.TransformManager) int64 {
 
 	// 设置响应头
-	r.c.Header("Content-Type", "text/event-stream")
-	r.c.Header("Cache-Control", "no-cache")
-	r.c.Header("Connection", "keep-alive")
+	r.setStreamHeaders()
 	r.c.Header("Access-Control-Allow-Origin", "*")
 	r.c.Header("Access-Control-Allow-Headers", "Content-Type")
 
@@ -1909,20 +1672,6 @@ func (r *relayClaudeOnly) convertOpenAIResponseToClaudeWithTransformer(openaiRes
 	return claudeResponse
 }
 
-// writeStreamResponse 直接写入流式响应
-func (r *relayClaudeOnly) writeStreamResponse(response *http.Response) {
-	// 设置响应头
-	for k, v := range response.Header {
-		for _, val := range v {
-			r.c.Header(k, val)
-		}
-	}
-
-	// 直接复制响应体
-	defer response.Body.Close()
-	io.Copy(r.c.Writer, response.Body)
-}
-
 // sendGeminiWithClaudeFormat handles Gemini channel Claude format requests
 // using transformer architecture: Claude format -> OpenAI format -> Gemini API -> OpenAI response -> Claude format
 func (r *relayClaudeOnly) sendGeminiWithClaudeFormat() (err *types.OpenAIErrorWithStatusCode, done bool) {
@@ -1934,17 +1683,10 @@ func (r *relayClaudeOnly) sendGeminiWithClaudeFormat() (err *types.OpenAIErrorWi
 	}
 
 	// 内容审查
-	if config.EnableSafe {
-		for _, message := range r.claudeRequest.Messages {
-			if message.Content != nil {
-				CheckResult, _ := safty.CheckContent(message.Content)
-				if !CheckResult.IsSafe {
-					err = common.StringErrorWrapperLocal(CheckResult.Reason, CheckResult.Code, http.StatusBadRequest)
-					done = true
-					return
-				}
-			}
-		}
+	if safetyErr := r.performContentSafety(); safetyErr != nil {
+		err = safetyErr
+		done = true
+		return
 	}
 
 	openaiRequest.Model = r.modelName
@@ -1998,326 +1740,4 @@ func (r *relayClaudeOnly) sendGeminiWithClaudeFormat() (err *types.OpenAIErrorWi
 	}
 
 	return err, false
-}
-
-// convertOpenAIStreamToClaudeImproved 改进的流式转换，修复重复响应问题
-// 保持原有的计费逻辑不变，只修复状态管理问题
-func (r *relayClaudeOnly) convertOpenAIStreamToClaudeImproved(stream requester.StreamReaderInterface[string]) int64 {
-	r.c.Header("Content-Type", "text/event-stream")
-	r.c.Header("Cache-Control", "no-cache")
-	r.c.Header("Connection", "keep-alive")
-
-	flusher, ok := r.c.Writer.(http.Flusher)
-	if !ok {
-		logger.SysError("Streaming unsupported")
-		return 0
-	}
-
-	// 使用原子操作确保状态一致性
-	var (
-		streamFinished int32 = 0 // 流是否已结束
-		streamStarted  int32 = 0 // 流是否已开始
-		contentStarted int32 = 0 // 内容是否已开始
-	)
-
-	// 其他状态变量保持不变，用于计费逻辑
-	var (
-		messageId               = fmt.Sprintf("msg_%d", utils.GetTimestamp())
-		model                   = r.modelName
-		contentIndex            = 0
-		contentChunks           = 0
-		toolCallChunks          = 0
-		processedInThisChunk    = make(map[int]bool)
-		toolCallStatesForTokens = make(map[int]map[string]interface{})
-		lastUsage               map[string]interface{}
-	)
-
-	// 安全关闭函数
-	safeClose := func() {
-		// 使用原子操作确保只关闭一次
-		if atomic.CompareAndSwapInt32(&streamFinished, 0, 1) {
-			// 流已安全结束
-		}
-	}
-
-	defer safeClose()
-
-	var firstResponseTime int64
-	isFirst := true
-
-	dataChan, errChan := stream.Recv()
-
-streamLoop:
-	for {
-		// 检查流是否已结束
-		if atomic.LoadInt32(&streamFinished) == 1 {
-			break streamLoop
-		}
-
-		select {
-		case rawLine := <-dataChan:
-			if atomic.LoadInt32(&streamFinished) == 1 {
-				break streamLoop
-			}
-
-			if isFirst {
-				firstResponseTime = utils.GetTimestamp()
-				isFirst = false
-			}
-
-			// 使用原子操作确保只发送一次开始事件
-			if atomic.CompareAndSwapInt32(&streamStarted, 0, 1) {
-				messageStartJSON := fmt.Sprintf(`{"type":"message_start","message":{"id":"%s","type":"message","role":"assistant","content":[],"model":"%s","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}}`, messageId, model)
-				r.writeSSEEventRawSafe("message_start", messageStartJSON)
-			}
-
-			// 处理流数据的逻辑保持不变，确保计费逻辑正确
-			var data string
-			if strings.HasPrefix(rawLine, "data: ") {
-				data = strings.TrimPrefix(rawLine, "data: ")
-				if data == "[DONE]" {
-					break streamLoop
-				}
-			} else if strings.TrimSpace(rawLine) != "" && strings.HasPrefix(rawLine, "{") {
-				data = rawLine
-			} else {
-				continue
-			}
-
-			var openaiChunk map[string]interface{}
-			if err := json.Unmarshal([]byte(data), &openaiChunk); err != nil {
-				continue
-			}
-
-			// 重置每个chunk的处理状态
-			processedInThisChunk = make(map[int]bool)
-
-			// 保存 usage 信息
-			if usage, usageExists := openaiChunk["usage"].(map[string]interface{}); usageExists {
-				lastUsage = usage
-			}
-
-			// 处理 choices（计费逻辑保持不变）
-			if choices, choicesExists := openaiChunk["choices"].([]interface{}); choicesExists {
-				for _, choice := range choices {
-					if choiceMap, ok := choice.(map[string]interface{}); ok {
-						// 处理文本内容
-						if delta, deltaExists := choiceMap["delta"].(map[string]interface{}); deltaExists {
-							if contentValue, contentExists := delta["content"]; contentExists && contentValue != nil {
-								if content, ok := contentValue.(string); ok && content != "" {
-									contentChunks++
-
-									// 累积文本内容到 TextBuilder 用于 token 计算（保持原有计费逻辑）
-									r.provider.GetUsage().TextBuilder.WriteString(content)
-
-									// 使用原子操作确保只发送一次内容开始事件
-									if atomic.CompareAndSwapInt32(&contentStarted, 0, 1) {
-										contentBlockStartJSON := fmt.Sprintf(`{"type":"content_block_start","index":%d,"content_block":{"type":"text","text":""}}`, contentIndex)
-										r.writeSSEEventRawSafe("content_block_start", contentBlockStartJSON)
-									}
-
-									// 发送内容增量事件
-									contentBytes, _ := json.Marshal(content)
-									contentBlockDeltaJSON := fmt.Sprintf(`{"type":"content_block_delta","index":%d,"delta":{"type":"text_delta","text":%s}}`, contentIndex, string(contentBytes))
-									r.writeSSEEventRawSafe("content_block_delta", contentBlockDeltaJSON)
-								}
-							}
-
-							// 处理工具调用（保持原有逻辑）
-							if toolCalls, toolExists := delta["tool_calls"].([]interface{}); toolExists {
-								toolCallChunks++
-								for _, toolCall := range toolCalls {
-									if toolCallMap, ok := toolCall.(map[string]interface{}); ok {
-										r.processToolCallDeltaImproved(toolCallMap, &contentIndex, flusher, processedInThisChunk, toolCallStatesForTokens)
-									}
-								}
-							}
-						}
-
-						// 处理结束原因 - 使用原子操作确保只处理一次
-						if finishReason, exists := choiceMap["finish_reason"].(string); exists && finishReason != "" {
-							if atomic.CompareAndSwapInt32(&streamFinished, 0, 1) {
-								r.handleStreamFinishImproved(finishReason, contentIndex, contentChunks, toolCallChunks, toolCallStatesForTokens, lastUsage, atomic.LoadInt32(&contentStarted) == 1)
-								break streamLoop
-							}
-						}
-					}
-				}
-			}
-
-		case err := <-errChan:
-			if err != nil {
-				if err.Error() == "EOF" {
-					// 使用原子操作确保只处理一次EOF
-					if atomic.CompareAndSwapInt32(&streamFinished, 0, 1) {
-						r.handleStreamFinishImproved("end_turn", contentIndex, contentChunks, toolCallChunks, toolCallStatesForTokens, lastUsage, atomic.LoadInt32(&contentStarted) == 1)
-					}
-				}
-				break streamLoop
-			}
-		}
-	}
-
-	return firstResponseTime
-}
-
-// writeSSEEventRawSafe 安全的SSE事件写入，检查连接状态
-func (r *relayClaudeOnly) writeSSEEventRawSafe(eventType, jsonData string) {
-	// 检查客户端连接状态
-	select {
-	case <-r.c.Request.Context().Done():
-		// 客户端已断开连接
-		return
-	default:
-		// 连接正常，继续处理
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			// 发生panic，可能是连接已断开
-		}
-	}()
-
-	_, err := fmt.Fprintf(r.c.Writer, "event: %s\ndata: %s\n\n", eventType, jsonData)
-	if err != nil {
-		// 写入失败，可能是连接已断开
-		return
-	}
-
-	// 立即flush数据
-	if flusher, ok := r.c.Writer.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
-
-// processToolCallDeltaImproved 改进的工具调用处理，保持计费逻辑
-func (r *relayClaudeOnly) processToolCallDeltaImproved(toolCallMap map[string]interface{}, contentIndex *int, flusher http.Flusher, processedInThisChunk map[int]bool, toolCallStatesForTokens map[int]map[string]interface{}) {
-	// 保持原有的工具调用处理逻辑，确保计费正确
-	if index, indexExists := toolCallMap["index"].(float64); indexExists {
-		toolCallIndex := int(index)
-
-		if !processedInThisChunk[toolCallIndex] {
-			processedInThisChunk[toolCallIndex] = true
-
-			if _, exists := toolCallStatesForTokens[toolCallIndex]; !exists {
-				toolCallStatesForTokens[toolCallIndex] = make(map[string]interface{})
-				toolCallStatesForTokens[toolCallIndex]["name"] = ""
-				toolCallStatesForTokens[toolCallIndex]["arguments"] = ""
-
-				*contentIndex++
-				contentBlockStartJSON := fmt.Sprintf(`{"type":"content_block_start","index":%d,"content_block":{"type":"tool_use","id":"toolu_%d","name":"","input":{}}}`, *contentIndex, toolCallIndex)
-				r.writeSSEEventRawSafe("content_block_start", contentBlockStartJSON)
-			}
-
-			if function, functionExists := toolCallMap["function"].(map[string]interface{}); functionExists {
-				if name, nameExists := function["name"].(string); nameExists && name != "" {
-					toolCallStatesForTokens[toolCallIndex]["name"] = name
-				}
-
-				if args, argsExists := function["arguments"].(string); argsExists {
-					arguments := toolCallStatesForTokens[toolCallIndex]["arguments"].(string) + args
-					toolCallStatesForTokens[toolCallIndex]["arguments"] = arguments
-
-					contentBlockDelta := map[string]interface{}{
-						"type":  "content_block_delta",
-						"index": *contentIndex,
-						"delta": map[string]interface{}{
-							"type":         "input_json_delta",
-							"partial_json": args,
-						},
-					}
-					r.writeSSEEventSafe("content_block_delta", contentBlockDelta)
-					flusher.Flush()
-				}
-			}
-		}
-	}
-}
-
-// writeSSEEventSafe 安全的SSE事件写入（结构化数据）
-func (r *relayClaudeOnly) writeSSEEventSafe(eventType string, data interface{}) {
-	select {
-	case <-r.c.Request.Context().Done():
-		return
-	default:
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			// 发生panic，忽略
-		}
-	}()
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return
-	}
-
-	fmt.Fprintf(r.c.Writer, "event: %s\ndata: %s\n\n", eventType, string(jsonData))
-}
-
-// handleStreamFinishImproved 改进的流结束处理，确保只执行一次
-func (r *relayClaudeOnly) handleStreamFinishImproved(finishReason string, contentIndex, contentChunks, toolCallChunks int, toolCallStatesForTokens map[int]map[string]interface{}, lastUsage map[string]interface{}, hasContentStarted bool) {
-	// 发送content_block_stop事件
-	if hasContentStarted || toolCallChunks > 0 {
-		contentBlockStopJSON := fmt.Sprintf(`{"type":"content_block_stop","index":%d}`, contentIndex)
-		r.writeSSEEventRawSafe("content_block_stop", contentBlockStopJSON)
-	}
-
-	// 转换停止原因
-	claudeStopReason := "end_turn"
-	switch finishReason {
-	case "stop":
-		claudeStopReason = "end_turn"
-	case "length":
-		claudeStopReason = "max_tokens"
-	case "tool_calls":
-		claudeStopReason = "tool_use"
-	case "content_filter":
-		claudeStopReason = "stop_sequence"
-	}
-
-	// 处理usage信息（保持原有计费逻辑）
-	var messageDeltaJSON string
-	if lastUsage != nil {
-		if inputTokens, inputExists := lastUsage["prompt_tokens"].(float64); inputExists {
-			if outputTokens, outputExists := lastUsage["completion_tokens"].(float64); outputExists {
-				messageDeltaJSON = fmt.Sprintf(`{"type":"message_delta","delta":{"stop_reason":"%s","stop_sequence":null},"usage":{"input_tokens":%d,"output_tokens":%d}}`, claudeStopReason, int(inputTokens), int(outputTokens))
-			}
-		}
-	}
-
-	if messageDeltaJSON == "" {
-		// 如果没有usage信息，计算工具调用和文本内容的 tokens（保持原有逻辑）
-		currentUsage := r.provider.GetUsage()
-		estimatedOutputTokens := 0
-
-		// 计算工具调用 tokens
-		for _, toolCallState := range toolCallStatesForTokens {
-			if name, nameExists := toolCallState["name"]; nameExists {
-				args := toolCallState["arguments"]
-				if name != "" {
-					toolCallText := fmt.Sprintf("tool_use:%s:%s", name, args)
-					tokens := common.CountTokenText(toolCallText, r.modelName)
-					estimatedOutputTokens += tokens
-				}
-			}
-		}
-
-		// 累加文本内容的 tokens
-		if currentUsage.TextBuilder.Len() > 0 {
-			textTokens := common.CountTokenText(currentUsage.TextBuilder.String(), r.modelName)
-			estimatedOutputTokens += textTokens
-		}
-
-		// 更新 Provider 的 Usage
-		currentUsage.CompletionTokens = estimatedOutputTokens
-		currentUsage.TotalTokens = currentUsage.PromptTokens + estimatedOutputTokens
-
-		messageDeltaJSON = fmt.Sprintf(`{"type":"message_delta","delta":{"stop_reason":"%s","stop_sequence":null},"usage":{"input_tokens":%d,"output_tokens":%d}}`, claudeStopReason, currentUsage.PromptTokens, estimatedOutputTokens)
-	}
-
-	// 发送结束事件
-	r.writeSSEEventRawSafe("message_delta", messageDeltaJSON)
-	r.writeSSEEventRawSafe("message_stop", `{"type":"message_stop"}`)
 }
