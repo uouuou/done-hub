@@ -33,6 +33,8 @@ func InitOptionMap() {
 	config.GlobalOption.RegisterBool("WeChatAuthEnabled", &config.WeChatAuthEnabled)
 	config.GlobalOption.RegisterBool("LarkAuthEnabled", &config.LarkAuthEnabled)
 	config.GlobalOption.RegisterBool("OIDCAuthEnabled", &config.OIDCAuthEnabled)
+	config.GlobalOption.RegisterBool("LinuxDoOAuthEnabled", &config.LinuxDoOAuthEnabled)
+	config.GlobalOption.RegisterBool("LinuxDoOAuthTrustLevelEnabled", &config.LinuxDoOAuthTrustLevelEnabled)
 	config.GlobalOption.RegisterBool("TurnstileCheckEnabled", &config.TurnstileCheckEnabled)
 	config.GlobalOption.RegisterBool("RegisterEnabled", &config.RegisterEnabled)
 	config.GlobalOption.RegisterBool("AutomaticDisableChannelEnabled", &config.AutomaticDisableChannelEnabled)
@@ -71,6 +73,10 @@ func InitOptionMap() {
 	config.GlobalOption.RegisterString("OIDCIssuer", &config.OIDCIssuer)
 	config.GlobalOption.RegisterString("OIDCScopes", &config.OIDCScopes)
 	config.GlobalOption.RegisterString("OIDCUsernameClaims", &config.OIDCUsernameClaims)
+
+	config.GlobalOption.RegisterString("LinuxDoClientId", &config.LinuxDoClientId)
+	config.GlobalOption.RegisterString("LinuxDoClientSecret", &config.LinuxDoClientSecret)
+	config.GlobalOption.RegisterInt("LinuxDoOAuthLowestTrustLevel", &config.LinuxDoOAuthLowestTrustLevel)
 
 	config.GlobalOption.RegisterString("WeChatServerAddress", &config.WeChatServerAddress)
 	config.GlobalOption.RegisterString("WeChatServerToken", &config.WeChatServerToken)

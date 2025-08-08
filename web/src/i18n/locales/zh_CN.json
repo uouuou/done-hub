@@ -587,6 +587,7 @@
     "bindWechatAccount": "绑定微信账号",
     "bindGitHubAccount": "绑定Github账号",
     "bindLarkAccount": "绑定飞书账号",
+    "bindLinuxDoAccount": "绑定LINUX DO账号",
     "changeEmail": "更换邮箱",
     "bindEmail": "绑定邮箱",
     "telegramBot": "Telegram 机器人",
@@ -918,7 +919,9 @@
         "larkAuth": "允许通过飞书登录 & 注册",
         "registerEnabled": "允许新用户注册（此项为否时，新用户将无法以任何方式进行注册）",
         "turnstileCheck": "启用 Turnstile 用户校验",
-        "gitHubOldIdClose": "关闭 GitHub 老 ID 登录"
+        "gitHubOldIdClose": "关闭 GitHub 老 ID 登录",
+        "linuxDoOAuth": "允许通过 LINUX DO 账户登录 & 注册",
+        "linuxDoOAuthTrustLevel": "允许通过 LINUX DO 信任等级进行限制"
       },
       "configureEmailDomainWhitelist": {
         "title": "配置邮箱域名白名单",
@@ -942,6 +945,21 @@
         "smtpToken": "SMTP 访问凭证",
         "smtpTokenPlaceholder": "敏感信息不会发送到前端显示",
         "save": "保存 SMTP 设置"
+      },
+      "configureLinuxDoOAuthApp": {
+        "title": "配置 LINUX DO OAuth 应用",
+        "subTitle": "用以支持通过 LINUX DO 进行登录注册，",
+        "manageLink": "点击此处",
+        "manage": "管理你的 LINUX DO App",
+        "alert1": "Homepage URL 填",
+        "alert2": "，Authorization callback URL 填",
+        "clientId": "LINUX DO Client ID",
+        "clientSecret": "LINUX DO Client Secret",
+        "lowestTrustLevel": "LINUX DO Trust Level",
+        "clientIdPlaceholder": "输入你注册的 LINUX DO OAuth APP 的 ID",
+        "clientSecretPlaceholder": "敏感信息不会发送到前端显示",
+        "lowestTrustLevelPlaceholder": "输入需要限制的最低信任等级",
+        "saveButton": "保存 LINUX DO OAuth 设置"
       },
       "configureGitHubOAuthApp": {
         "title": "配置 GitHub OAuth 应用",
@@ -1086,7 +1104,11 @@
     "useGithubLogin": "使用 Github 登录",
     "useWechatLogin": "使用 Wechat 登录",
     "useOIDCLogin": "使用 OIDC 登录",
-    "useLarkLogin": "使用飞书登录"
+    "useLarkLogin": "使用飞书登录",
+    "linuxDoLogin": "LINUX DO 登录",
+    "useLinuxDoLogin": "使用 LINUX DO 登录",
+    "linuxDoError": "操作失败，重定向至登录界面中...",
+    "linuxDoCountError": "出现错误，第 {{count}} 次重试中..."
   },
   "description": "All in one 的 OpenAI 接口\n整合各种 API 访问方式\n一键部署，开箱即用",
   "about": {

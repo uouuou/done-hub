@@ -545,7 +545,8 @@
     "usernameOrEmail": "Username/Email",
     "usernameRequired": "Username/Email is required",
     "wechatLoginInfo": "Please use WeChat to scan the QR code to follow the official account and enter the \"verification code\" to obtain the verification code (valid within three minutes)",
-    "wechatVerificationCodeLogin": "WeChat verification code login"
+    "wechatVerificationCodeLogin": "WeChat verification code login",
+    "useLinuxDoLogin": "Log in with LINUX DO"
   },
   "midjourneyPage": {
     "channel": "Channel",
@@ -774,7 +775,8 @@
     "usernameMinLength": "Username must be at least 3 characters long",
     "usernameRequired": "Username cannot be empty",
     "wechatBindSuccess": "WeChat account successfully bound!",
-    "yourTokenIs": "Your access token is:"
+    "yourTokenIs": "Your access token is:",
+    "bindLinuxDoAccount": "Bind LINUX DO Account"
   },
   "redemption": "Redemption",
   "redemptionPage": {
@@ -1158,7 +1160,22 @@
         "title": "System Settings",
         "updateServerAddress": "Update Server Address"
       },
-      "title": "System Settings"
+      "title": "System Settings",
+      "configureLinuxDoOAuthApp": {
+        "title": "Configure LINUX DO OAuth App",
+        "subTitle": "Used to support login and registration via LINUX DO,",
+        "manageLink": "Click here",
+        "manage": "Manage your LINUX DO App",
+        "alert1": "Homepage URL: ",
+        "alert2": ", Authorization callback URL: ",
+        "clientId": "LINUX DO Client ID",
+        "clientSecret": "LINUX DO Client Secret",
+        "lowestTrustLevel": "LINUX DO Trust Level",
+        "clientIdPlaceholder": "Enter the ID of your registered LINUX DO OAuth APP",
+        "clientSecretPlaceholder": "Sensitive information will not be sent to the frontend for display",
+        "lowestTrustLevelPlaceholder": "Enter the minimum trust level to restrict",
+        "saveButton": "Save LINUX DO OAuth Settings"
+      }
     }
   },
   "shimmer 映射": "shimmer mapping",

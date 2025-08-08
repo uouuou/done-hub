@@ -68,6 +68,39 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "LinuxDoOAuthEnabled":
+		if option.Value == "true" && (config.LinuxDoClientId == "" || config.LinuxDoClientSecret == "") {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "无法启用 LINUX DO OAuth，请先填入 LINUX DO Client Id 以及 LINUX DO Client Secret！",
+			})
+			return
+		}
+	case "LinuxDoOAuthTrustLevelEnabled":
+		if option.Value == "true" && config.LinuxDoOAuthEnabled == false {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "无法启用 LINUX DO 信用等级限制，请先启用 LINUX DO OAuth ！",
+			})
+			return
+		}
+	case "LinuxDoOAuthLowestTrustLevel":
+		lowestTrustLevel, err := strconv.Atoi(option.Value)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "LINUX DO 信任等级必须为数字",
+			})
+			return
+		}
+		if lowestTrustLevel < config.Basic || lowestTrustLevel > config.Leader {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "LINUX DO 信任等级必须 1~4 之间",
+			})
+			return
+		}
+
 	case "EmailDomainRestrictionEnabled":
 		if option.Value == "true" && len(config.EmailDomainWhitelist) == 0 {
 			c.JSON(http.StatusOK, gin.H{

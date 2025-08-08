@@ -60,6 +60,11 @@ const SystemSetting = () => {
     TurnstileSiteKey: '',
     TurnstileSecretKey: '',
     RegisterEnabled: '',
+    LinuxDoOAuthEnabled: '',
+    LinuxDoOAuthTrustLevelEnabled: '',
+    LinuxDoClientId: '',
+    LinuxDoClientSecret: '',
+    LinuxDoOAuthLowestTrustLevel: '',
     EmailDomainRestrictionEnabled: '',
     EmailDomainWhitelist: []
   });
@@ -108,6 +113,8 @@ const SystemSetting = () => {
       case 'WeChatAuthEnabled':
       case 'LarkAuthEnabled':
       case 'OIDCAuthEnabled':
+      case 'LinuxDoOAuthEnabled':
+      case 'LinuxDoOAuthTrustLevelEnabled':
       case 'TurnstileCheckEnabled':
       case 'EmailDomainRestrictionEnabled':
       case 'RegisterEnabled':
@@ -170,7 +177,10 @@ const SystemSetting = () => {
       name === 'TurnstileSecretKey' ||
       name === 'EmailDomainWhitelist' ||
       name === 'LarkClientId' ||
-      name === 'LarkClientSecret'
+      name === 'LarkClientSecret'||
+      name === 'LinuxDoClientId' ||
+      name === 'LinuxDoClientSecret' ||
+      name === 'LinuxDoOAuthLowestTrustLevel' 
     ) {
       setInputs((inputs) => ({ ...inputs, [name]: value }));
     } else {
@@ -246,6 +256,18 @@ const SystemSetting = () => {
     // 检查并更新 OIDCUsernameClaims
     if (originInputs['OIDCUsernameClaims'] !== inputs.OIDCUsernameClaims) {
       await updateOption('OIDCUsernameClaims', inputs.OIDCUsernameClaims);
+    }
+  };
+
+  const submitLinuxDoOAuth = async () => {
+    if (originInputs['LinuxDoClientId'] !== inputs.LinuxDoClientId) {
+      await updateOption('LinuxDoClientId', inputs.LinuxDoClientId);
+    }
+    if (originInputs['LinuxDoClientSecret'] !== inputs.LinuxDoClientSecret && inputs.LinuxDoClientSecret !== '') {
+      await updateOption('LinuxDoClientSecret', inputs.LinuxDoClientSecret);
+    }
+    if (originInputs['LinuxDoOAuthLowestTrustLevel'] !== inputs.LinuxDoOAuthLowestTrustLevel) {
+      await updateOption('LinuxDoOAuthLowestTrustLevel', inputs.LinuxDoOAuthLowestTrustLevel);
     }
   };
 
@@ -350,6 +372,18 @@ const SystemSetting = () => {
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.oidcAuth')}
                 control={<Checkbox checked={inputs.OIDCAuthEnabled === 'true'} onChange={handleInputChange} name="OIDCAuthEnabled" />}
+              />
+            </Grid>
+            <Grid xs={12} md={3}>
+              <FormControlLabel
+                label={t('setting_index.systemSettings.configureLoginRegister.linuxDoOAuth')}
+                control={<Checkbox checked={inputs.LinuxDoOAuthEnabled === 'true'} onChange={handleInputChange} name="LinuxDoOAuthEnabled" />}
+              />
+            </Grid>
+            <Grid xs={12} md={3}>
+              <FormControlLabel
+                label={t('setting_index.systemSettings.configureLoginRegister.linuxDoOAuthTrustLevel')}
+                control={<Checkbox checked={inputs.LinuxDoOAuthTrustLevelEnabled === 'true'} onChange={handleInputChange} name="LinuxDoOAuthTrustLevelEnabled" />}
               />
             </Grid>
             <Grid xs={12} md={3}>
@@ -861,6 +895,79 @@ const SystemSetting = () => {
             </Grid>
           </Grid>
         </SubCard>
+
+        <SubCard
+          title={t('setting_index.systemSettings.configureLinuxDoOAuthApp.title')}
+          subTitle={
+            <span>
+              {' '}
+              {t('setting_index.systemSettings.configureLinuxDoOAuthApp.subTitle')}
+              <a href="https://connect.linux.do/dash/sso" target="_blank" rel="noopener noreferrer">
+                {t('setting_index.systemSettings.configureLinuxDoOAuthApp.manageLink')}
+              </a>
+              {t('setting_index.systemSettings.configureLinuxDoOAuthApp.manage')}
+            </span>
+          }
+        >
+          <Grid container spacing={{ xs: 3, sm: 2, md: 4 }}>
+            <Grid xs={12}>
+              <Alert severity="info" sx={{ wordWrap: 'break-word' }}>
+                {t('setting_index.systemSettings.configureLinuxDoOAuthApp.alert1')} <b>{inputs.ServerAddress}</b>
+                {t('setting_index.systemSettings.configureLinuxDoOAuthApp.alert2')} <b>{`${inputs.ServerAddress}/oauth/linuxdo`}</b>
+              </Alert>
+            </Grid>
+            <Grid xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel htmlFor="LinuxDoClientId">{t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientId')}</InputLabel>
+                <OutlinedInput
+                  id="LinuxDoClientId"
+                  name="LinuxDoClientId"
+                  value={inputs.LinuxDoClientId || ''}
+                  onChange={handleInputChange}
+                  label={t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientId')}
+                  placeholder={t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientIdPlaceholder')}
+                  disabled={loading}
+                />
+              </FormControl>
+            </Grid>
+            <Grid xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel htmlFor="LinuxDoClientSecret">
+                  {t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientSecret')}
+                </InputLabel>
+                <OutlinedInput
+                  id="LinuxDoClientSecret"
+                  name="LinuxDoClientSecret"
+                  value={inputs.LinuxDoClientSecret || ''}
+                  onChange={handleInputChange}
+                  label={t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientSecret')}
+                  placeholder={t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientSecretPlaceholder')}
+                  disabled={loading}
+                />
+              </FormControl>
+            </Grid>
+            <Grid xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel htmlFor="LinuxDoOAuthLowestTrustLevel">{t('setting_index.systemSettings.configureLinuxDoOAuthApp.lowestTrustLevel')}</InputLabel>
+                <OutlinedInput
+                  id="LinuxDoOAuthLowestTrustLevel"
+                  name="LinuxDoOAuthLowestTrustLevel"
+                  value={inputs.LinuxDoOAuthLowestTrustLevel || ''}
+                  onChange={handleInputChange}
+                  label={t('setting_index.systemSettings.configureLinuxDoOAuthApp.lowestTrustLevel')}
+                  placeholder={t('setting_index.systemSettings.configureLinuxDoOAuthApp.lowestTrustLevelPlaceholder')}
+                  disabled={loading}
+                />
+              </FormControl>
+            </Grid>
+            <Grid xs={12}>
+              <Button variant="contained" onClick={submitLinuxDoOAuth}>
+                {t('setting_index.systemSettings.configureLinuxDoOAuthApp.saveButton')}
+              </Button>
+            </Grid>
+          </Grid>
+        </SubCard>
+
       </Stack>
       <Dialog open={showPasswordWarningModal} onClose={() => setShowPasswordWarningModal(false)} maxWidth={'md'}>
         <DialogTitle sx={{ margin: '0px', fontWeight: 700, lineHeight: '1.55556', padding: '24px', fontSize: '1.125rem' }}>
