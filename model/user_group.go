@@ -67,6 +67,11 @@ func GetUserGroupsAll(isPublic bool) ([]*UserGroup, error) {
 }
 
 func (c *UserGroup) Create() error {
+	// 确保enable字段有默认值
+	if c.Enable == nil {
+		enable := true
+		c.Enable = &enable
+	}
 	err := DB.Create(c).Error
 	if err == nil {
 		GlobalUserGroupRatio.Load()

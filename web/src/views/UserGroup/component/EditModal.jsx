@@ -41,7 +41,8 @@ const originInputs = {
   api_rate: 300,
   promotion: false,
   min: 0,
-  max: 0
+  max: 0,
+  enable: true
 };
 
 const EditModal = ({ open, userGroupId, onCancel, onOk }) => {

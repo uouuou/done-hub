@@ -176,7 +176,13 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
       <TableRow tabIndex={item.id}>
         <TableCell>{item.name}</TableCell>
         <TableCell>
-          <Label color={userGroup[item.group]?.color}>{userGroup[item.group]?.name || '跟随用户'}</Label>
+          {item.group === '' ? (
+            <Label color="default">跟随用户</Label>
+          ) : userGroup[item.group] ? (
+            <Label color={userGroup[item.group].color}>{userGroup[item.group].name}</Label>
+          ) : (
+            <Label color="error">{item.group} (不存在)</Label>
+          )}
         </TableCell>
 
         <TableCell>
