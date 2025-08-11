@@ -15,7 +15,6 @@ import (
 	"done-hub/safty"
 	"done-hub/types"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,12 +51,6 @@ func (r *relayClaudeOnly) setRequest() error {
 	r.setOriginalModel(r.claudeRequest.Model)
 	// 设置原始模型到 Context，用于统一请求响应模型功能
 	r.c.Set("original_model", r.claudeRequest.Model)
-
-	// 检测背景任务（参考demo逻辑）
-	if r.isBackgroundTask() {
-
-		return r.handleBackgroundTaskInSetRequest()
-	}
 
 	// 保持原始的流式/非流式状态
 
@@ -1392,81 +1385,6 @@ func (r *relayClaudeOnly) writeSSEEventInternal(eventType string, data interface
 }
 
 // handleBackgroundTaskInSetRequest 在setRequest阶段处理背景任务
-
-// isBackgroundTask 检测是否为背景任务（如话题分析）
-func (r *relayClaudeOnly) isBackgroundTask() bool {
-	if r.claudeRequest.System == nil {
-		return false
-	}
-
-	var systemTexts []string
-
-	switch sys := r.claudeRequest.System.(type) {
-	case string:
-		systemTexts = append(systemTexts, sys)
-	case []interface{}:
-		for _, item := range sys {
-			if itemMap, ok := item.(map[string]interface{}); ok {
-				if itemType, exists := itemMap["type"]; exists && itemType == "text" {
-					if text, textExists := itemMap["text"]; textExists {
-						if textStr, ok := text.(string); ok {
-							systemTexts = append(systemTexts, textStr)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// 检查系统消息是否包含背景任务标识
-	for _, text := range systemTexts {
-		if strings.Contains(text, "Summarize this coding conversation") ||
-			strings.Contains(text, "write a 5-10 word title") ||
-			strings.Contains(text, "Analyze if this message indicates a new conversation topic") {
-			return true
-		}
-	}
-
-	return false
-}
-
-// handleBackgroundTaskInSetRequest 在setRequest阶段处理背景任务
-func (r *relayClaudeOnly) handleBackgroundTaskInSetRequest() error {
-
-	if r.claudeRequest.Stream {
-		// 流式响应：立即结束连接
-		r.setStreamHeaders()
-
-		// 发送最简单的完成事件并立即结束
-		messageId := fmt.Sprintf("msg_bg_%d", utils.GetTimestamp())
-		r.c.Writer.Write([]byte(`data: {"type":"message_start","message":{"id":"` + messageId + `","type":"message","role":"assistant","content":[],"model":"` + r.modelName + `","stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":0,"output_tokens":0}}}` + "\n\n"))
-		r.c.Writer.Write([]byte(`data: {"type":"message_stop"}` + "\n\n"))
-
-		if flusher, ok := r.c.Writer.(http.Flusher); ok {
-			flusher.Flush()
-		}
-	} else {
-		// 非流式响应：立即返回空的Claude响应
-		r.c.Header("Content-Type", "application/json")
-		emptyResponse := &claude.ClaudeResponse{
-			Id:         fmt.Sprintf("msg_bg_%d", utils.GetTimestamp()),
-			Type:       "message",
-			Role:       "assistant",
-			Content:    []claude.ResContent{},
-			Model:      r.modelName,
-			StopReason: "end_turn",
-			Usage: claude.Usage{
-				InputTokens:  0,
-				OutputTokens: 0,
-			},
-		}
-
-		r.c.JSON(http.StatusOK, emptyResponse)
-	}
-
-	// 返回一个特殊错误，表示这是背景任务，已经处理完成
-	return errors.New("background_task_handled")
-}
 
 // sendVertexAIGeminiWithClaudeFormat handles VertexAI Gemini model Claude format requests
 // using new transformer architecture: Claude format -> unified format -> Gemini format -> VertexAI Gemini API -> Gemini response -> unified format -> Claude format
