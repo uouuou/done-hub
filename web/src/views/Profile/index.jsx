@@ -27,7 +27,7 @@ import { useSelector } from 'react-redux';
 import EmailModal from './component/EmailModal';
 import Turnstile from 'react-turnstile';
 import LarkIcon from 'assets/images/icons/lark.svg';
-import LinuxdoProfileIcon from 'assets/images/icons/linuxdo-profile-icon';
+import LinuxDoIcon from 'assets/images/icons/LinuxDoIcon';
 import { useTheme } from '@mui/material/styles';
 
 const validationSchema = Yup.object().shape({
@@ -176,8 +176,9 @@ export default function Profile() {
                 </Label>
               )}
               {status.linuxDo_oauth && (
-                <Label variant="ghost" color={Number(inputs.linuxdo_id) !== 0 ? 'primary' : 'default'}>
-                  <LinuxdoProfileIcon /> {Number(inputs.linuxdo_id) !== 0 ? inputs.linuxdo_id : t('profilePage.notBound')}
+                <Label variant="ghost" color={inputs.linuxdo_username ? 'primary' : 'default'}>
+                  <LinuxDoIcon size={24} variant="profile" />
+                  {inputs.linuxdo_username || t('profilePage.notBound')}
                 </Label>
               )}
             </Stack>
@@ -282,7 +283,7 @@ export default function Profile() {
                       {t('profilePage.bindLinuxDoAccount')}
                     </Button>
                   </Grid>
-                )}                
+                )}
                 {status.telegram_bot && ( //&& !inputs.telegram_id
                   <Grid xs={12} md={12}>
                     <Stack spacing={2}>

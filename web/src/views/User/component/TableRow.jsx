@@ -2,6 +2,7 @@ import PropTypes from 'prop-types'
 import { useState } from 'react'
 
 import {
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -26,6 +27,7 @@ import { Icon } from '@iconify/react'
 import { useTheme } from '@mui/material/styles'
 import { useTranslation } from 'react-i18next'
 import ConfirmDialog from 'ui-component/confirm-dialog'
+import LinuxDoIcon from 'assets/images/icons/LinuxDoIcon'
 
 function renderRole(t, role) {
   switch (role) {
@@ -139,6 +141,15 @@ export default function UsersTableRow({ item, manageUser, handleOpenModal, setMo
             </Tooltip>
             <Tooltip title={item.github_id ? item.github_id : t('profilePage.notBound')} placement="top">
               <Icon icon="ri:github-fill" color={item.github_id ? theme.palette.grey[900] : theme.palette.grey[400]}/>
+            </Tooltip>
+            <Tooltip title={item.linuxdo_username ? item.linuxdo_username : '未绑定'} placement="top">
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <LinuxDoIcon
+                  size={16}
+                  color={item.linuxdo_username ? '#ffb003' : theme.palette.grey[400]}
+                  style={{ opacity: item.linuxdo_username ? 1 : 0.6 }}
+                />
+              </span>
             </Tooltip>
             <Tooltip title={item.email ? item.email : t('profilePage.notBound')} placement="top">
               <Icon icon="ri:mail-fill" color={item.email ? theme.palette.grey[900] : theme.palette.grey[400]}/>

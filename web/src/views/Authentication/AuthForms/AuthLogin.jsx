@@ -37,7 +37,7 @@ import Github from 'assets/images/icons/github.svg';
 import Wechat from 'assets/images/icons/wechat.svg';
 import Lark from 'assets/images/icons/lark.svg';
 import Oidc from 'assets/images/icons/oidc.svg';
-import LinuxDo from 'assets/images/icons/linuxdo.svg';
+import LinuxDoIcon from 'assets/images/icons/LinuxDoIcon';
 import { onGitHubOAuthClicked, onLarkOAuthClicked,onOIDCAuthClicked, onLinuxDoOAuthClicked } from 'utils/common';
 import { useTranslation } from 'react-i18next';
 
@@ -92,7 +92,7 @@ const LoginForm = ({ ...others }) => {
                     ...theme.typography.LoginButton
                   }}
                 >
-                  <Box sx={{ mr: { xs: 1, sm: 2, width: 20 }, display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ mr: { xs: 1, sm: 2 }, display: 'flex', alignItems: 'center', minWidth: 25 }}>
                     <img src={Github} alt="github" width={25} height={25} style={{ marginRight: matchDownSM ? 8 : 16 }} />
                   </Box>
                   {t('login.useGithubLogin')}
@@ -113,7 +113,7 @@ const LoginForm = ({ ...others }) => {
                     ...theme.typography.LoginButton
                   }}
                 >
-                  <Box sx={{ mr: { xs: 1, sm: 2, width: 20 }, display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ mr: { xs: 1, sm: 2 }, display: 'flex', alignItems: 'center', minWidth: 25 }}>
                     <img src={Wechat} alt="Wechat" width={25} height={25} style={{ marginRight: matchDownSM ? 8 : 16 }} />
                   </Box>
                   {t('login.useWechatLogin')}
@@ -135,7 +135,7 @@ const LoginForm = ({ ...others }) => {
                     ...theme.typography.LoginButton
                   }}
                 >
-                  <Box sx={{ mr: { xs: 1, sm: 2, width: 20 }, display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ mr: { xs: 1, sm: 2 }, display: 'flex', alignItems: 'center', minWidth: 25 }}>
                     <img src={Lark} alt="Lark" width={25} height={25} style={{ marginRight: matchDownSM ? 8 : 16 }} />
                   </Box>
                   {t('login.useLarkLogin')}
@@ -157,7 +157,7 @@ const LoginForm = ({ ...others }) => {
                     ...theme.typography.LoginButton
                   }}
                 >
-                  <Box sx={{ mr: { xs: 1, sm: 2, width: 20 }, display: 'flex', alignItems: 'center' }}>
+                  <Box sx={{ mr: { xs: 1, sm: 2 }, display: 'flex', alignItems: 'center', minWidth: 25 }}>
                     <img src={Oidc} alt="oidc" width={25} height={25} style={{ marginRight: matchDownSM ? 8 : 16 }} />
                   </Box>
                   {t('login.useOIDCLogin')}
@@ -178,8 +178,12 @@ const LoginForm = ({ ...others }) => {
                     ...theme.typography.LoginButton
                   }}
                 >
-                  <Box sx={{ mr: { xs: 1, sm: 2, width: 20 }, display: 'flex', alignItems: 'center' }}>
-                    <img src={LinuxDo} alt="linuxdo" width={25} height={25} style={{ marginRight: matchDownSM ? 8 : 16 }} />
+                  <Box sx={{ mr: { xs: 1, sm: 2 }, display: 'flex', alignItems: 'center', minWidth: 25 }}>
+                    <LinuxDoIcon
+                      size={25}
+                      variant="login"
+                      style={{ marginRight: matchDownSM ? 8 : 16 }}
+                    />
                   </Box>
                   {t('login.useLinuxDoLogin')}
                 </Button>
