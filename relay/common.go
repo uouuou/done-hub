@@ -65,8 +65,17 @@ func Path2Relay(c *gin.Context, path string) RelayBaseInterface {
 
 func GetProvider(c *gin.Context, modelName string) (provider providersBase.ProviderInterface, newModelName string, fail error) {
 	// 首先尝试获取匹配的模型名称（处理大小写不敏感）
-	group := c.GetString("group")
-	matchedModelName, err := model.ChannelGroup.GetMatchedModelName(group, modelName)
+	groupName := c.GetString("token_group")
+	if groupName == "" {
+		groupName = c.GetString("group")
+	}
+
+	if groupName == "" {
+		common.AbortWithMessage(c, http.StatusServiceUnavailable, "分组不存在")
+		return
+	}
+
+	matchedModelName, err := model.ChannelGroup.GetMatchedModelName(groupName, modelName)
 	if err != nil {
 		fail = err
 		return

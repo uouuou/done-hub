@@ -217,7 +217,8 @@ func (cc *ChannelsChooser) GetMatchedModelName(group, modelName string) (string,
 	}
 
 	if matchModel == "" {
-		return "", errors.New("model not found")
+		message := fmt.Sprintf("当前分组 %s 下对于模型 %s 无可用渠道", group, modelName)
+		return "", errors.New(message)
 	}
 
 	return matchModel, nil
