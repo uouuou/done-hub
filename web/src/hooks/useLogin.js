@@ -18,7 +18,8 @@ const useLogin = () => {
       });
       const { success, message } = res.data;
       if (success) {
-        loadUser();
+        // 等待用户信息加载完成后再跳转
+        await loadUser();
         loadUserGroup();
         navigate('/panel');
       }
@@ -39,7 +40,8 @@ const useLogin = () => {
           showSuccess(t('common.bindOk'));
           navigate('/panel');
         } else {
-          loadUser();
+          // 等待用户信息加载完成后再跳转
+          await loadUser();
           loadUserGroup();
           showSuccess(t('common.loginOk'));
           navigate('/panel');
@@ -85,7 +87,8 @@ const useLogin = () => {
           showSuccess(t('common.bindOk'));
           navigate('/panel');
         } else {
-          loadUser();
+          // 等待用户信息加载完成后再跳转
+          await loadUser();
           showSuccess(t('common.loginOk'));
           navigate('/panel');
         }
@@ -103,7 +106,8 @@ const useLogin = () => {
       const res = await API.get(`/api/oauth/wechat?code=${code}&aff=${affCode}`);
       const { success, message } = res.data;
       if (success) {
-        loadUser();
+        // 等待用户信息加载完成后再跳转
+        await loadUser();
         loadUserGroup();
         showSuccess(t('common.loginOk'));
         navigate('/panel');
@@ -125,7 +129,8 @@ const useLogin = () => {
           showSuccess(t('common.bindOk'));
           navigate('/panel');
         } else {
-          loadUser();
+          // 等待用户信息加载完成后再跳转
+          await loadUser();
           loadUserGroup();
           showSuccess(t('common.loginOk'));
           navigate('/panel');

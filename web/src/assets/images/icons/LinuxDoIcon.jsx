@@ -33,7 +33,6 @@ const LinuxDoIcon = ({
       style={getDefaultStyle()}
       {...props}
     >
-      <title>LINUX DO Logo</title>
       <clipPath id={clipId}>
         <circle cx="60" cy="60" r="47"/>
       </clipPath>

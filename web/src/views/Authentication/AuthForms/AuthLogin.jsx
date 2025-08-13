@@ -7,6 +7,7 @@ import { useTheme } from '@mui/material/styles';
 import {
   Box,
   Button,
+  CircularProgress,
   Divider,
   FormControl,
   FormHelperText,
@@ -316,8 +317,17 @@ const LoginForm = ({ ...others }) => {
 
             <Box sx={{ mt: 2 }}>
               <AnimateButton>
-                <Button disableElevation disabled={isSubmitting} fullWidth size="large" type="submit" variant="contained" color="primary">
-                  {t('menu.login')}
+                <Button
+                  disableElevation
+                  disabled={isSubmitting}
+                  fullWidth
+                  size="large"
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
+                >
+                  {isSubmitting ? t('login.loggingIn') : t('menu.login')}
                 </Button>
               </AnimateButton>
             </Box>

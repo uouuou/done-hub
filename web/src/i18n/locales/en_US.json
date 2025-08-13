@@ -559,7 +559,8 @@
     "usernameRequired": "Username/Email is required",
     "wechatLoginInfo": "Please use WeChat to scan the QR code to follow the official account and enter the \"verification code\" to obtain the verification code (valid within three minutes)",
     "wechatVerificationCodeLogin": "WeChat verification code login",
-    "useLinuxDoLogin": "Log in with LINUX DO"
+    "useLinuxDoLogin": "Log in with LINUX DO",
+    "loggingIn": "Logging in..."
   },
   "midjourneyPage": {
     "channel": "Channel",
