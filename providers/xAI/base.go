@@ -1,6 +1,7 @@
 package xAI
 
 import (
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/model"
 	"done-hub/providers/base"
@@ -9,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 // 定义供应商工厂
@@ -71,13 +71,13 @@ func usageHandler(usage *types.Usage) (ForcedFormatting bool) {
 
 func requestHandler(request *types.ChatCompletionRequest) (errWithCode *types.OpenAIErrorWithStatusCode) {
 
-	if strings.HasPrefix(request.Model, "grok-4") || strings.HasPrefix(request.Model, "grok-3-mini") || strings.HasPrefix(request.Model, "grok-3-mini-fast") {
+	if model_utils.HasPrefixCaseInsensitive(request.Model, "grok-4") || model_utils.HasPrefixCaseInsensitive(request.Model, "grok-3-mini") || model_utils.HasPrefixCaseInsensitive(request.Model, "grok-3-mini-fast") {
 		request.Stop = nil
 		request.FrequencyPenalty = nil
 		request.PresencePenalty = nil
 	}
 
-	if strings.HasPrefix(request.Model, "grok-4") {
+	if model_utils.HasPrefixCaseInsensitive(request.Model, "grok-4") {
 		request.ReasoningEffort = nil
 	}
 

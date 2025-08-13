@@ -181,6 +181,48 @@ func (cc *ChannelsChooser) balancer(channelIds []int, filters []ChannelsFilterFu
 	return nil
 }
 
+// GetMatchedModelName 获取匹配到的实际模型名称
+func (cc *ChannelsChooser) GetMatchedModelName(group, modelName string) (string, error) {
+	cc.RLock()
+	defer cc.RUnlock()
+	if _, ok := cc.Rule[group]; !ok {
+		return "", errors.New("group not found")
+	}
+
+	// 如果直接匹配到了，返回原始模型名称
+	if _, ok := cc.Rule[group][modelName]; ok {
+		return modelName, nil
+	}
+
+	var matchModel string
+
+	if config.ModelNameCaseInsensitiveEnabled {
+		// 1. 先尝试精确的大小写不敏感匹配
+		modelNameLower := strings.ToLower(modelName)
+		for existingModel := range cc.Rule[group] {
+			if strings.ToLower(existingModel) == modelNameLower {
+				matchModel = existingModel
+				break
+			}
+		}
+		// 2. 如果没找到，再尝试通配符的大小写不敏感匹配
+		if matchModel == "" {
+			matchModel = utils.GetModelsWithMatchCaseInsensitive(&cc.Match, modelName)
+		}
+	}
+
+	// 3. 如果还是没找到，使用原始匹配作为后备
+	if matchModel == "" {
+		matchModel = utils.GetModelsWithMatch(&cc.Match, modelName)
+	}
+
+	if matchModel == "" {
+		return "", errors.New("model not found")
+	}
+
+	return matchModel, nil
+}
+
 func (cc *ChannelsChooser) Next(group, modelName string, filters ...ChannelsFilterFunc) (*Channel, error) {
 	cc.RLock()
 	defer cc.RUnlock()
@@ -190,7 +232,28 @@ func (cc *ChannelsChooser) Next(group, modelName string, filters ...ChannelsFilt
 
 	channelsPriority, ok := cc.Rule[group][modelName]
 	if !ok {
-		matchModel := utils.GetModelsWithMatch(&cc.Match, modelName)
+		var matchModel string
+
+		if config.ModelNameCaseInsensitiveEnabled {
+			// 1. 先尝试精确的大小写不敏感匹配
+			modelNameLower := strings.ToLower(modelName)
+			for existingModel := range cc.Rule[group] {
+				if strings.ToLower(existingModel) == modelNameLower {
+					matchModel = existingModel
+					break
+				}
+			}
+			// 2. 如果没找到，再尝试通配符的大小写不敏感匹配
+			if matchModel == "" {
+				matchModel = utils.GetModelsWithMatchCaseInsensitive(&cc.Match, modelName)
+			}
+		}
+
+		// 3. 如果还是没找到，使用原始匹配作为后备
+		if matchModel == "" {
+			matchModel = utils.GetModelsWithMatch(&cc.Match, modelName)
+		}
+
 		channelsPriority, ok = cc.Rule[group][matchModel]
 		if !ok {
 			return nil, errors.New("model not found")

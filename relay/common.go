@@ -64,7 +64,18 @@ func Path2Relay(c *gin.Context, path string) RelayBaseInterface {
 }
 
 func GetProvider(c *gin.Context, modelName string) (provider providersBase.ProviderInterface, newModelName string, fail error) {
-	channel, fail := fetchChannel(c, modelName)
+	// 首先尝试获取匹配的模型名称（处理大小写不敏感）
+	group := c.GetString("group")
+	matchedModelName, err := model.ChannelGroup.GetMatchedModelName(group, modelName)
+	if err != nil {
+		fail = err
+		return
+	}
+
+	// 如果匹配到了不同的模型名称，使用匹配到的名称进行后续处理
+	actualModelName := matchedModelName
+
+	channel, fail := fetchChannel(c, actualModelName)
 	if fail != nil {
 		return
 	}
@@ -76,10 +87,10 @@ func GetProvider(c *gin.Context, modelName string) (provider providersBase.Provi
 		fail = errors.New("channel not found")
 		return
 	}
-	provider.SetOriginalModel(modelName)
+	provider.SetOriginalModel(modelName) // 保存用户原始请求的模型名称
 	c.Set("original_model", modelName)
 
-	newModelName, fail = provider.ModelMappingHandler(modelName)
+	newModelName, fail = provider.ModelMappingHandler(actualModelName) // 使用匹配到的模型名称进行映射
 	if fail != nil {
 		return
 	}

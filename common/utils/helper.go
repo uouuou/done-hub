@@ -332,6 +332,17 @@ func GetModelsWithMatch(modelList *[]string, modelName string) string {
 	return ""
 }
 
+func GetModelsWithMatchCaseInsensitive(modelList *[]string, modelName string) string {
+	modelNameLower := strings.ToLower(modelName)
+	for _, model := range *modelList {
+		modelLower := strings.ToLower(model)
+		if strings.HasPrefix(modelNameLower, strings.TrimRight(modelLower, "*")) {
+			return model
+		}
+	}
+	return ""
+}
+
 func EscapeMarkdownText(text string) string {
 	chars := []string{"_", "*", "[", "]", "(", ")", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!", "`"}
 	for _, char := range chars {

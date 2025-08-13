@@ -1,12 +1,12 @@
 package category
 
 import (
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/providers/base"
 	"done-hub/types"
 	"errors"
 	"net/http"
-	"strings"
 )
 
 var CategoryMap = map[string]Category{}
@@ -23,7 +23,7 @@ func GetCategory(modelName string) (*Category, error) {
 	// 获取provider
 	provider := ""
 
-	if strings.Contains(modelName, "anthropic") {
+	if model_utils.ContainsCaseInsensitive(modelName, "anthropic") {
 		provider = "anthropic"
 	}
 

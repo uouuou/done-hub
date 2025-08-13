@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"done-hub/common"
 	"done-hub/common/config"
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/providers/base"
 	"done-hub/types"
@@ -246,7 +247,7 @@ func otherProcessing(request *types.ChatCompletionRequest, otherArg string) {
 		request.MaxCompletionTokens = request.MaxTokens
 		request.MaxTokens = 0
 
-		if strings.HasPrefix(request.Model, "o3") {
+		if model_utils.HasPrefixCaseInsensitive(request.Model, "o3") {
 			request.Temperature = nil
 			if otherArg != "" {
 				request.ReasoningEffort = &otherArg

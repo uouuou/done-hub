@@ -568,6 +568,24 @@ const OperationSetting = () => {
                 }
               />
             </Tooltip>
+            <Tooltip
+              title={t('setting_index.operationSettings.generalSettings.modelNameCaseInsensitiveTooltip')}
+              placement="top"
+              enterDelay={300}
+              arrow
+            >
+              <FormControlLabel
+                label={t('setting_index.operationSettings.generalSettings.modelNameCaseInsensitive')}
+                control={
+                  <Checkbox
+                    checked={dataLoaded ? inputs.ModelNameCaseInsensitiveEnabled === 'true' : false}
+                    onChange={handleInputChange}
+                    name="ModelNameCaseInsensitiveEnabled"
+                    disabled={!dataLoaded || loading}
+                  />
+                }
+              />
+            </Tooltip>
           </Stack>
           <Button
             variant="contained"

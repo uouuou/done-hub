@@ -3,6 +3,7 @@ package ali
 import (
 	"done-hub/common"
 	"done-hub/common/config"
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/common/utils"
 	"done-hub/types"
@@ -187,7 +188,7 @@ func (p *AliProvider) pluginHandle(request *AliChatRequest) {
 			// 检查当前模型是否包含支持列表中的字符串
 			supportedModels := strings.Split(WebSearchSupportedModels, ",")
 			for _, model := range supportedModels {
-				if strings.Contains(request.Model, model) {
+				if model_utils.ContainsCaseInsensitive(request.Model, model) {
 					request.Parameters.EnableSearch = true
 					break
 				}

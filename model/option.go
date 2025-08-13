@@ -140,6 +140,9 @@ func InitOptionMap() {
 	// 注册统一请求响应模型配置项
 	config.GlobalOption.RegisterBool("UnifiedRequestResponseModelEnabled", &config.UnifiedRequestResponseModelEnabled)
 
+	// 注册模型名称大小写不敏感配置项
+	config.GlobalOption.RegisterBool("ModelNameCaseInsensitiveEnabled", &config.ModelNameCaseInsensitiveEnabled)
+
 	loadOptionsFromDatabase()
 }
 

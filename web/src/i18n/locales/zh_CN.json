@@ -748,6 +748,8 @@
         "emptyResponseBilling": "空回复计费",
         "unifiedRequestResponseModel": "统一请求响应模型",
         "unifiedRequestResponseModelTooltip": "当存在模型映射时，响应中的model值为请求的model值，而非实际调用的模型名称",
+        "modelNameCaseInsensitive": "模型名称大小写不敏感",
+        "modelNameCaseInsensitiveTooltip": "开启后，模型匹配时将忽略大小写，例如 GPT-4、gpt-4、Gpt-4 都会匹配到同一个模型",
         "saveButton": "保存通用设置"
       },
       "invoice": {

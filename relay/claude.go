@@ -5,6 +5,7 @@ import (
 	"done-hub/common"
 	"done-hub/common/config"
 	"done-hub/common/logger"
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/common/utils"
 	"done-hub/providers/claude"
@@ -82,7 +83,7 @@ func (r *relayClaudeOnly) send() (err *types.OpenAIErrorWithStatusCode, done boo
 
 	// 检查是否为 VertexAI 渠道且模型包含 gemini，如果是则使用 Gemini->Claude 转换逻辑
 	if channelType == config.ChannelTypeVertexAI &&
-		(strings.Contains(strings.ToLower(r.claudeRequest.Model), "gemini") || strings.Contains(strings.ToLower(r.claudeRequest.Model), "claude-3-5-haiku-20241022")) {
+		(model_utils.ContainsCaseInsensitive(r.claudeRequest.Model, "gemini") || model_utils.ContainsCaseInsensitive(r.claudeRequest.Model, "claude-3-5-haiku-20241022")) {
 		return r.sendVertexAIGeminiWithClaudeFormat()
 	}
 

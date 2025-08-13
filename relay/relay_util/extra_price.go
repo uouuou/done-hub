@@ -1,6 +1,7 @@
 package relay_util
 
 import (
+	"done-hub/common/model_utils"
 	"done-hub/types"
 	"strings"
 )
@@ -45,7 +46,7 @@ var defaultExtraServicePrices = ExtraServicePriceConfig{
 
 func getModelTier(modelName string) string {
 	// 高级模型：gpt-4.1, gpt-4o(包含 mini)
-	if strings.HasPrefix(modelName, "gpt-4.1") || strings.HasPrefix(modelName, "gpt-4o") {
+	if model_utils.HasPrefixCaseInsensitive(modelName, "gpt-4.1") || model_utils.HasPrefixCaseInsensitive(modelName, "gpt-4o") {
 		return "high_tier"
 	}
 	return "standard"

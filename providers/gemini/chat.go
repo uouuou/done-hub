@@ -3,6 +3,7 @@ package gemini
 import (
 	"done-hub/common"
 	"done-hub/common/config"
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/common/utils"
 	"done-hub/providers/base"
@@ -414,7 +415,7 @@ func ConvertFromChatOpenai(request *types.ChatCompletionRequest) (*GeminiChatReq
 		},
 	}
 
-	if strings.HasPrefix(request.Model, "gemini-2.0-flash-exp") {
+	if model_utils.HasPrefixCaseInsensitive(request.Model, "gemini-2.0-flash-exp") {
 		geminiRequest.GenerationConfig.ResponseModalities = []string{"Text", "Image"}
 	}
 

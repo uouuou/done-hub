@@ -198,6 +198,9 @@ var RetryTimeOut = 10
 // 统一请求响应模型（响应中显示用户请求的原始模型名称）
 var UnifiedRequestResponseModelEnabled = false
 
+// 模型名称大小写不敏感匹配
+var ModelNameCaseInsensitiveEnabled = false
+
 var DefaultChannelWeight = uint(1)
 var RetryCooldownSeconds = 5
 

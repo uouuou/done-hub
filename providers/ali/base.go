@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/model"
 	"done-hub/providers/base"
@@ -110,7 +111,7 @@ func (p *AliProvider) GetFullRequestURL(requestURL string, modelName string) str
 
 	modelKeywords := strings.Split(VisionModelKeywords, ",")
 	for _, keyword := range modelKeywords {
-		if strings.Contains(modelName, keyword) {
+		if model_utils.ContainsCaseInsensitive(modelName, keyword) {
 			requestURL = "/api/v1/services/aigc/multimodal-generation/generation"
 			break
 		}

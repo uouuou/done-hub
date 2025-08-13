@@ -3,6 +3,7 @@ package common
 import (
 	"done-hub/common/config"
 	"done-hub/common/logger"
+	"done-hub/common/model_utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -291,7 +292,7 @@ func CountTokenRerankMessages(messages types.RerankRequest, model string, preCos
 
 func getCountImageFun(model string) CountImageFun {
 	for prefix, fun := range CountImageFunMap {
-		if strings.HasPrefix(model, prefix) {
+		if model_utils.HasPrefixCaseInsensitive(model, prefix) {
 			return fun
 		}
 	}
@@ -446,17 +447,33 @@ func calculateToken(model string, size string, n int, quality, style string) (in
 	imageCostRatio := 1.0
 	hasValidSize := false
 
-	switch model {
+	// 大小写不敏感的模型匹配
+	modelLower := strings.ToLower(model)
+	switch modelLower {
 	case "recraft20b", "recraftv3":
 		if style == "vector_illustration" {
 			imageCostRatio = 2
 		}
 
 	default:
-		imageCostRatio, hasValidSize = DalleSizeRatios[model][size]
+		// 尝试大小写不敏感的匹配
+		var matchedModel string
+		if config.ModelNameCaseInsensitiveEnabled {
+			for dalleModel := range DalleSizeRatios {
+				if strings.ToLower(dalleModel) == modelLower {
+					matchedModel = dalleModel
+					break
+				}
+			}
+		}
+		if matchedModel == "" {
+			matchedModel = model // 使用原始模型名称作为后备
+		}
+
+		imageCostRatio, hasValidSize = DalleSizeRatios[matchedModel][size]
 
 		if hasValidSize {
-			if quality == "hd" && model == "dall-e-3" {
+			if quality == "hd" && (strings.ToLower(matchedModel) == "dall-e-3" || matchedModel == "dall-e-3") {
 				if size == "1024x1024" {
 					imageCostRatio *= 2
 				} else {

@@ -874,7 +874,9 @@
         },
         "emptyResponseBilling": "Empty Response Billing",
         "unifiedRequestResponseModel": "Unified Request Response Model",
-        "unifiedRequestResponseModelTooltip": "When model mapping exists, the model value in the response will be the requested model value instead of the actual called model name"
+        "unifiedRequestResponseModelTooltip": "When model mapping exists, the model value in the response will be the requested model value instead of the actual called model name",
+        "modelNameCaseInsensitive": "Model Name Case Insensitive",
+        "modelNameCaseInsensitiveTooltip": "When enabled, model matching will ignore case sensitivity, e.g., GPT-4, gpt-4, Gpt-4 will all match the same model"
       },
       "logSettings": {
         "clearLogs": "Clear Historical Logs",

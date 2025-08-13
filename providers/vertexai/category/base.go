@@ -1,12 +1,12 @@
 package category
 
 import (
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/providers/base"
 	"done-hub/types"
 	"errors"
 	"net/http"
-	"strings"
 )
 
 type Category struct {
@@ -25,9 +25,9 @@ func GetCategory(modelName string) (*Category, error) {
 
 	category := ""
 
-	if strings.HasPrefix(modelName, "gemini") || strings.HasPrefix(modelName, "imagen") {
+	if model_utils.HasPrefixCaseInsensitive(modelName, "gemini") || model_utils.HasPrefixCaseInsensitive(modelName, "imagen") {
 		category = "gemini"
-	} else if strings.HasPrefix(modelName, "claude") {
+	} else if model_utils.HasPrefixCaseInsensitive(modelName, "claude") {
 		category = "claude"
 	}
 

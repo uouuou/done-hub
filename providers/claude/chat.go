@@ -4,6 +4,7 @@ import (
 	"done-hub/common"
 	"done-hub/common/config"
 	"done-hub/common/image"
+	"done-hub/common/model_utils"
 	"done-hub/common/requester"
 	"done-hub/common/utils"
 	"done-hub/providers/base"
@@ -103,11 +104,11 @@ func (p *ClaudeProvider) getChatRequest(claudeRequest *ClaudeRequest) (*http.Req
 		headers["Accept"] = "text/event-stream"
 	}
 
-	if strings.HasPrefix(claudeRequest.Model, "claude-3-5-sonnet") {
+	if model_utils.HasPrefixCaseInsensitive(claudeRequest.Model, "claude-3-5-sonnet") {
 		headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
 	}
 
-	if strings.HasPrefix(claudeRequest.Model, "claude-3-7-sonnet") {
+	if model_utils.HasPrefixCaseInsensitive(claudeRequest.Model, "claude-3-7-sonnet") {
 		headers["anthropic-beta"] = "output-128k-2025-02-19"
 	}
 
