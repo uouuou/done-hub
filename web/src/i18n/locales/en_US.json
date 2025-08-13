@@ -243,7 +243,20 @@
     "pleaseSelectChannelsForUserGroup": "Please select at least one channel",
     "addingUserGroup": "Adding...",
     "addUserGroupToChannels": "Add user group to {{count}} channels",
-    "batchAddUserGroupSuccess": "Successfully added user group \"{{group}}\" to {{count}} channels"
+    "batchAddUserGroupSuccess": "Successfully added user group \"{{group}}\" to {{count}} channels",
+    "batchAddModel": "Batch Add Model",
+    "batchAddModelTip": "Select channels and add models. Supports multiple models (comma-separated). If a channel already has a model, it will be skipped.",
+    "selectModelToAdd": "Select or input models to add",
+    "pleaseSelectModel": "Please select or input models",
+    "pleaseSelectChannelsForModel": "Please select at least one channel",
+    "channelAlreadyHasModel": "(Already has some models)",
+    "currentModels": "Current models",
+    "noModels": "None",
+    "addingModel": "Adding...",
+    "addModelToChannels": "Add models to {{count}} channels",
+    "batchAddModelSuccess": "Successfully added models \"{{model}}\" to {{count}} channels",
+    "modelInputTip": "Supports multiple models, separated by commas",
+    "loadingChannels": "Loading channels..."
   },
   "channel_row": {
     "auto": "automatic",

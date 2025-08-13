@@ -722,7 +722,7 @@ export default function ChannelList() {
         modelOptions={modelOptions}
         prices={prices}
       />
-      <BatchModal open={openBatchModal} setOpen={setOpenBatchModal} groupOptions={groupOptions}/>
+      <BatchModal open={openBatchModal} setOpen={setOpenBatchModal} groupOptions={groupOptions} modelOptions={modelOptions}/>
 
       <ConfirmDialog
         open={confirm.value}
