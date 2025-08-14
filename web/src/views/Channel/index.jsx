@@ -521,7 +521,8 @@ export default function ChannelList() {
             height: 50,
             display: 'flex',
             justifyContent: 'space-between',
-            p: (theme) => theme.spacing(0, 1, 0, 3)
+            p: (theme) => theme.spacing(0, 1, 0, 3),
+            minWidth: 0
           }}
         >
           {/* 左侧删除渠道按钮 */}
@@ -542,60 +543,106 @@ export default function ChannelList() {
             </Button>
           )}
 
-          <Container maxWidth="xl">
+          <Box sx={{ flex: 1, overflow: 'hidden', minWidth: 0, display: 'flex', justifyContent: 'flex-end', ml: 2 }}>
             {matchUpMd ? (
-              <ButtonGroup variant="outlined" aria-label="outlined small primary button group">
-                <Button onClick={() => handleRefresh(true)}
-                        startIcon={<Icon icon="solar:refresh-circle-bold-duotone" width={18}/>}>
-                  {t('channel_index.refreshClearSearchConditions')}
-                </Button>
-                <Button
-                  onClick={searchChannels}
-                  startIcon={
-                    searching ? (
-                      <Icon
-                        icon="solar:refresh-bold-duotone"
-                        width={18}
-                        style={{
-                          animation: 'spin 1s linear infinite',
-                          color: '#1976d2'
-                        }}
-                      />
-                    ) : (
-                      <Icon icon="solar:magnifer-bold-duotone" width={18}/>
-                    )
-                  }
+              <Box sx={{
+                overflow: 'auto',
+                maxWidth: '100%',
+                scrollBehavior: 'smooth',
+                '&::-webkit-scrollbar': {
+                  height: '4px'
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: 'rgba(0,0,0,0.2)',
+                  borderRadius: '2px'
+                }
+              }}>
+                <ButtonGroup
+                  variant="outlined"
+                  aria-label="outlined small primary button group"
                   sx={{
-                    ...(searching && {
-                      bgcolor: 'action.hover',
-                      color: 'primary.main',
-                      '&:hover': {
-                        bgcolor: 'action.selected'
-                      }
-                    })
+                    flexWrap: 'nowrap',
+                    minWidth: 'max-content',
+                    display: 'flex'
                   }}
                 >
-                  {searching ? '搜索中...' : t('channel_index.search')}
-                </Button>
-                <Button
-                  onClick={() => handlePopoverOpen(t('channel_index.testAllChannels'), testAllChannels)}
-                  startIcon={<Icon icon="solar:test-tube-bold-duotone" width={18}/>}
-                >
-                  {t('channel_index.testAllChannels')}
-                </Button>
-                <Button
-                  onClick={() => handlePopoverOpen(t('channel_index.updateEnabledBalance'), updateAllChannelsBalance)}
-                  startIcon={<Icon icon="solar:dollar-minimalistic-bold-duotone" width={18}/>}
-                >
-                  {t('channel_index.updateEnabledBalance')}
-                </Button>
-                <Button
-                  onClick={() => handlePopoverOpen(t('channel_index.deleteDisabledChannels'), deleteAllDisabledChannels)}
-                  startIcon={<Icon icon="solar:trash-bin-trash-bold-duotone" width={18}/>}
-                >
-                  {t('channel_index.deleteDisabledChannels')}
-                </Button>
-              </ButtonGroup>
+                  <Button
+                    onClick={() => handleRefresh(true)}
+                    startIcon={<Icon icon="solar:refresh-circle-bold-duotone" width={18}/>}
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      minWidth: 'auto',
+                      px: 1.5
+                    }}
+                  >
+                    {t('channel_index.refreshClearSearchConditions')}
+                  </Button>
+                  <Button
+                    onClick={searchChannels}
+                    startIcon={
+                      searching ? (
+                        <Icon
+                          icon="solar:refresh-bold-duotone"
+                          width={18}
+                          style={{
+                            animation: 'spin 1s linear infinite',
+                            color: '#1976d2'
+                          }}
+                        />
+                      ) : (
+                        <Icon icon="solar:magnifer-bold-duotone" width={18}/>
+                      )
+                    }
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      minWidth: 'auto',
+                      px: 1.5,
+                      ...(searching && {
+                        bgcolor: 'action.hover',
+                        color: 'primary.main',
+                        '&:hover': {
+                          bgcolor: 'action.selected'
+                        }
+                      })
+                    }}
+                  >
+                    {searching ? '搜索中...' : t('channel_index.search')}
+                  </Button>
+                  <Button
+                    onClick={() => handlePopoverOpen(t('channel_index.testAllChannels'), testAllChannels)}
+                    startIcon={<Icon icon="solar:test-tube-bold-duotone" width={18}/>}
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      minWidth: 'auto',
+                      px: 1.5
+                    }}
+                  >
+                    {t('channel_index.testAllChannels')}
+                  </Button>
+                  <Button
+                    onClick={() => handlePopoverOpen(t('channel_index.updateEnabledBalance'), updateAllChannelsBalance)}
+                    startIcon={<Icon icon="solar:dollar-minimalistic-bold-duotone" width={18}/>}
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      minWidth: 'auto',
+                      px: 1.5
+                    }}
+                  >
+                    {t('channel_index.updateEnabledBalance')}
+                  </Button>
+                  <Button
+                    onClick={() => handlePopoverOpen(t('channel_index.deleteDisabledChannels'), deleteAllDisabledChannels)}
+                    startIcon={<Icon icon="solar:trash-bin-trash-bold-duotone" width={18}/>}
+                    sx={{
+                      whiteSpace: 'nowrap',
+                      minWidth: 'auto',
+                      px: 1.5
+                    }}
+                  >
+                    {t('channel_index.deleteDisabledChannels')}
+                  </Button>
+                </ButtonGroup>
+              </Box>
             ) : (
               <Stack
                 direction="row"
@@ -603,6 +650,17 @@ export default function ChannelList() {
                 divider={<Divider orientation="vertical" flexItem/>}
                 justifyContent="space-around"
                 alignItems="center"
+                sx={{
+                  overflow: 'auto',
+                  minWidth: 'max-content',
+                  '&::-webkit-scrollbar': {
+                    height: '4px'
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    backgroundColor: 'rgba(0,0,0,0.2)',
+                    borderRadius: '2px'
+                  }
+                }}
               >
                 <IconButton onClick={() => handleRefresh(true)} size="large">
                   <Icon width={20} icon="solar:refresh-circle-bold-duotone"/>
@@ -652,7 +710,7 @@ export default function ChannelList() {
                 </IconButton>
               </Stack>
             )}
-          </Container>
+          </Box>
         </Toolbar>
         {searching && <LinearProgress/>}
         <TableContainer>
