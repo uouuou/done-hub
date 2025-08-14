@@ -55,6 +55,7 @@ _本项目是基于[one-hub](https://github.com/MartialBE/one-api)二次开发�
 - 优化邮箱规则校验
 - 优化若干`UI`交互
 - 优化禁用渠道邮件推送逻辑
+- 优化`VertexAI`的鉴权缓存
 - ...
 
 ## 部署

@@ -55,6 +55,7 @@ _This project is a secondary development based on [one-hub](https://github.com/M
 - Optimized email rule validation
 - Optimized various `UI` interactions
 - Optimized disabled channel email notification logic
+- Optimize the authentication cache for `Vertex AI`
 - ...
 
 ## Deployment
