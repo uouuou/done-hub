@@ -149,7 +149,10 @@ func (p *VertexAIProvider) GetToken() (string, error) {
 		return "", fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	duration := time.Until(resp.ExpireTime.AsTime())
+	duration := time.Until(resp.ExpireTime.AsTime()) - 5*time.Minute
+	if duration <= 0 {
+		duration = 30 * time.Second
+	}
 	cache.SetCache(cacheKey, resp.AccessToken, duration)
 
 	return resp.AccessToken, nil
