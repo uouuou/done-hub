@@ -13,6 +13,25 @@ import (
 	"time"
 )
 
+// 错误消息常量
+const (
+	ErrNoAvailableChannelForModel        = "当前分组 %s 下对于模型 %s 无可用渠道"
+	ErrGroupNotFound                     = "group not found"
+	ErrModelNotFound                     = "model not found"
+	ErrChannelNotFound                   = "channel not found"
+	ErrModelNotFoundInGroup              = "model not found in group"
+	ErrNoChannelsAvailable               = "no channels available for model"
+	ErrNoAvailableChannelsAfterFiltering = "no available channels after filtering"
+	ErrDatabaseConsistencyBroken         = "数据库一致性已被破坏，请联系管理员"
+	ErrInvalidChannelId                  = "无效的渠道 Id"
+	ErrChannelDisabled                   = "该渠道已被禁用"
+)
+
+// 关键词常量
+const (
+	KeywordNoAvailableChannel = "无可用渠道"
+)
+
 type ChannelChoice struct {
 	Channel       *Channel
 	CooldownsTime int64
@@ -217,7 +236,7 @@ func (cc *ChannelsChooser) GetMatchedModelName(group, modelName string) (string,
 	}
 
 	if matchModel == "" {
-		message := fmt.Sprintf("当前分组 %s 下对于模型 %s 无可用渠道", group, modelName)
+		message := fmt.Sprintf(ErrNoAvailableChannelForModel, group, modelName)
 		return "", errors.New(message)
 	}
 
@@ -228,7 +247,7 @@ func (cc *ChannelsChooser) Next(group, modelName string, filters ...ChannelsFilt
 	cc.RLock()
 	defer cc.RUnlock()
 	if _, ok := cc.Rule[group]; !ok {
-		return nil, errors.New("group not found")
+		return nil, errors.New(ErrGroupNotFound)
 	}
 
 	channelsPriority, ok := cc.Rule[group][modelName]
@@ -257,12 +276,12 @@ func (cc *ChannelsChooser) Next(group, modelName string, filters ...ChannelsFilt
 
 		channelsPriority, ok = cc.Rule[group][matchModel]
 		if !ok {
-			return nil, errors.New("model not found")
+			return nil, errors.New(ErrModelNotFound)
 		}
 	}
 
 	if len(channelsPriority) == 0 {
-		return nil, errors.New("channel not found")
+		return nil, errors.New(ErrChannelNotFound)
 	}
 
 	for _, priority := range channelsPriority {
@@ -272,7 +291,35 @@ func (cc *ChannelsChooser) Next(group, modelName string, filters ...ChannelsFilt
 		}
 	}
 
-	return nil, errors.New("channel not found")
+	return nil, errors.New(ErrChannelNotFound)
+}
+
+// NextByValidatedModel 使用已经验证过的模型名称获取渠道，跳过模型匹配逻辑
+func (cc *ChannelsChooser) NextByValidatedModel(group, validatedModelName string, filters ...ChannelsFilterFunc) (*Channel, error) {
+	cc.RLock()
+	defer cc.RUnlock()
+
+	if _, ok := cc.Rule[group]; !ok {
+		return nil, errors.New(ErrGroupNotFound)
+	}
+
+	channelsPriority, ok := cc.Rule[group][validatedModelName]
+	if !ok {
+		return nil, errors.New(ErrModelNotFoundInGroup)
+	}
+
+	if len(channelsPriority) == 0 {
+		return nil, errors.New(ErrNoChannelsAvailable)
+	}
+
+	for _, priority := range channelsPriority {
+		channel := cc.balancer(priority, filters, validatedModelName)
+		if channel != nil {
+			return channel, nil
+		}
+	}
+
+	return nil, errors.New(ErrNoAvailableChannelsAfterFiltering)
 }
 
 func (cc *ChannelsChooser) GetGroupModels(group string) ([]string, error) {
@@ -280,7 +327,7 @@ func (cc *ChannelsChooser) GetGroupModels(group string) ([]string, error) {
 	defer cc.RUnlock()
 
 	if _, ok := cc.Rule[group]; !ok {
-		return nil, errors.New("group not found")
+		return nil, errors.New(ErrGroupNotFound)
 	}
 
 	models := make([]string, 0, len(cc.Rule[group]))
