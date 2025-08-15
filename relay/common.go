@@ -50,8 +50,11 @@ func Path2Relay(c *gin.Context, path string) RelayBaseInterface {
 	} else if strings.HasPrefix(path, "/claude") {
 		relay = NewRelayClaudeOnly(c)
 	} else if strings.HasPrefix(path, "/gemini") {
-		// 检查是否是图像生成predict请求
-		if strings.Contains(path, ":predict") {
+		// 检查是否是 Veo 3.0 视频生成请求
+		if strings.Contains(path, "veo-3.0-generate-preview:predictLongRunning") {
+			relay = NewRelayVeoOnly(c)
+		} else if strings.Contains(path, ":predict") {
+			// 检查是否是图像生成predict请求
 			relay = newRelayImageGenerations(c)
 		} else {
 			relay = NewRelayGeminiOnly(c)

@@ -776,6 +776,55 @@ type GeminiImagePrediction struct {
 	SafetyAttributes   any    `json:"safetyAttributes,omitempty"`
 }
 
+// Veo 3.0 Video Generation Types
+type VeoVideoRequest struct {
+	Instances  []VeoVideoInstance  `json:"instances"`
+	Parameters *VeoVideoParameters `json:"parameters,omitempty"`
+}
+
+type VeoVideoInstance struct {
+	Prompt string `json:"prompt"`
+}
+
+type VeoVideoParameters struct {
+	AspectRatio     string `json:"aspectRatio,omitempty"`     // e.g., "16:9"
+	NegativePrompt  string `json:"negativePrompt,omitempty"`  // e.g., "cartoon, drawing, low quality"
+	SampleCount     int    `json:"sampleCount,omitempty"`     // Number of videos to generate
+	DurationSeconds int    `json:"durationSeconds,omitempty"` // Video duration
+}
+
+// Veo 3.0 Long Running Operation Response
+type VeoLongRunningResponse struct {
+	Name     string                 `json:"name"` // Operation name for polling
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Done     bool                   `json:"done"`
+	Response *VeoVideoResponse      `json:"response,omitempty"`
+	Error    *VeoOperationError     `json:"error,omitempty"`
+}
+
+type VeoVideoResponse struct {
+	GenerateVideoResponse *VeoGenerateVideoResponse `json:"generateVideoResponse,omitempty"`
+}
+
+type VeoGenerateVideoResponse struct {
+	GeneratedSamples []VeoGeneratedSample `json:"generatedSamples"`
+}
+
+type VeoGeneratedSample struct {
+	Video *VeoVideoData `json:"video"`
+}
+
+type VeoVideoData struct {
+	Uri      string `json:"uri"`      // Download URI
+	MimeType string `json:"mimeType"` // e.g., "video/mp4"
+}
+
+type VeoOperationError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Status  string `json:"status"`
+}
+
 func isEmptyOrOnlyNewlines(s string) bool {
 	trimmed := strings.TrimSpace(s)
 	return trimmed == ""

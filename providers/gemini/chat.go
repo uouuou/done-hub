@@ -151,6 +151,9 @@ func (p *GeminiProvider) getActionURL(geminiRequest *GeminiChatRequest) string {
 			return "streamGenerateContent?alt=sse"
 		}
 		return "generateContent"
+	case "predictLongRunning":
+		// Veo 3.0 视频生成
+		return "predictLongRunning"
 	default:
 		// 对于其他 action，直接使用原始值
 		if geminiRequest.Stream && !strings.Contains(action, "stream") {

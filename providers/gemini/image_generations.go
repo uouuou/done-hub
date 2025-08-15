@@ -15,6 +15,20 @@ func (p *GeminiProvider) CreateImageGenerations(request *types.ImageRequest) (*t
 	// 设置默认的personGeneration
 	parameters["personGeneration"] = "allow_adult"
 
+	// 处理AspectRatio
+	if request.AspectRatio != nil {
+		parameters["aspectRatio"] = *request.AspectRatio
+	} else {
+		switch request.Size {
+		case "1024x1792":
+			parameters["aspectRatio"] = "9:16"
+		case "1792x1024":
+			parameters["aspectRatio"] = "16:9"
+		default:
+			parameters["aspectRatio"] = "1:1"
+		}
+	}
+
 	// 透传所有额外参数
 	if request.ExtraParams != nil {
 		for key, value := range request.ExtraParams {
@@ -29,20 +43,6 @@ func (p *GeminiProvider) CreateImageGenerations(request *types.ImageRequest) (*t
 			},
 		},
 		Parameters: parameters,
-	}
-
-	// 处理AspectRatio
-	if request.AspectRatio != nil {
-		parameters["aspectRatio"] = *request.AspectRatio
-	} else {
-		switch request.Size {
-		case "1024x1792":
-			parameters["aspectRatio"] = "9:16"
-		case "1792x1024":
-			parameters["aspectRatio"] = "16:9"
-		default:
-			parameters["aspectRatio"] = "1:1"
-		}
 	}
 
 	fullRequestURL := p.GetFullRequestURL("predict", request.Model)
