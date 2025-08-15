@@ -60,6 +60,10 @@ func (r *relayVeoOnly) setRequest() error {
 		return errors.New("instances is required")
 	}
 
+	if len(r.veoRequest.Instances) > 1 {
+		return errors.New("only one instance is supported, multiple video generation is not allowed")
+	}
+
 	for _, instance := range r.veoRequest.Instances {
 		if instance.Prompt == "" {
 			return errors.New("prompt is required in instances")
