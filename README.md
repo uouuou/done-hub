@@ -34,10 +34,11 @@ _本项目是基于[one-hub](https://github.com/MartialBE/one-api)二次开发�
 - 支持渠道**额外参数中删除指定参数**
 - 支持渠道`BaseURL`添加**模型变量替换**
 - 支持`/gemini`原生生图请求的**额外参数透传**
-- 支持自定义渠道使用`Claude`原生路由 - 接入`ClaudeCode`
+- 支持**自定义渠道**使用`Claude`原生路由 - 接入`ClaudeCode`
 - 支持`VertexAI`渠道使用`Gemini`原生路由 - 接入`GeminiCli`
 - 支持`VertexAI`渠道使用`Claude`原生路由 - 接入`ClaudeCode`
 - 支持`VertexAI`渠道下可配置多个`Region`, 每次请求随机选取`Region`
+- 支持`Google Gemini`渠道`/gemini`使用原生**生成视频请求**(`Veo`系列模型)
 - 支持`gemini-2.0-flash-preview-image-generation`文生图/图生图，并兼容`OpenAI`对话接口
 - 新增**批量添加渠道的用户分组功能**
 - 新增**空回复是否计费配置** （默认:计费）

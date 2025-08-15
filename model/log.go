@@ -207,7 +207,18 @@ func GetUserLogsList(userId int, params *LogsListParams) (*DataResult[Log], erro
 		tx = tx.Where("created_at <= ?", params.EndTimestamp)
 	}
 
-	return PaginateAndOrder[Log](tx, &params.PaginationParams, &logs, allowedLogsOrderFields)
+	result, err := PaginateAndOrder[Log](tx, &params.PaginationParams, &logs, allowedLogsOrderFields)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, log := range *result.Data {
+		if log.Type == LogTypeManage || log.Type == LogTypeSystem {
+			log.SourceIp = ""
+		}
+	}
+
+	return result, nil
 }
 
 func SearchAllLogs(keyword string) (logs []*Log, err error) {
