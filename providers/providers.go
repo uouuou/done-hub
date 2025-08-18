@@ -45,7 +45,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 定义供应商工厂接口
+// ProviderFactory 定义供应商工厂接口
 type ProviderFactory interface {
 	Create(Channel *model.Channel) base.ProviderInterface
 }

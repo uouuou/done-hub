@@ -9,6 +9,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -22,6 +25,11 @@ func UnmarshalBodyReusable(c *gin.Context, v any) error {
 	if err != nil {
 		return err
 	}
+
+	// 兼容客户自己开启搜索引擎的模式
+	jsonData := gjson.ParseBytes(requestBody)
+	c.Set("enable_search", jsonData.Get("enable_search").Bool())
+	requestBody, _ = sjson.DeleteBytes(requestBody, "enable_search")
 	c.Set(config.GinRequestBodyKey, requestBody)
 
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))

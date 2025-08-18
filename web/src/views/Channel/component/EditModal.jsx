@@ -69,6 +69,7 @@ const getValidationSchema = (t) =>
     }),
     model_mapping: Yup.array(),
     model_headers: Yup.array(),
+    enable_search: Yup.boolean(),
     custom_parameter: Yup.string().nullable()
   });
 
@@ -187,6 +188,9 @@ const EditModal = ({ open, channelId, onCancel, onOk, groupOptions, isTag, model
     }
     if (values.type === 18 && values.other === '') {
       values.other = 'v2.1';
+    }
+    if (values.system_prompt === '' || values.system_prompt === null || values.system_prompt === undefined) {
+      delete values.system_prompt;
     }
     let res;
 
@@ -836,6 +840,48 @@ const EditModal = ({ open, channelId, onCancel, onOk, groupOptions, isTag, model
                       </Box>
                     </FormHelperText>
                   )}
+                </FormControl>
+
+                <FormControl fullWidth error={Boolean(touched.system_prompt && errors.system_prompt)} sx={{ ...theme.typography.otherInput }}>
+                  <TextField
+                    multiline
+                    id="channel-system_prompt-label"
+                    label={customizeT(inputLabel.system_prompt)}
+                    value={values.system_prompt || ''}
+                    name="system_prompt"
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    disabled={hasTag}
+                    minRows={3}
+                    aria-describedby="helper-text-channel-system_prompt-label"
+                  />
+                  {touched.system_prompt && errors.system_prompt ? (
+                    <FormHelperText error id="helper-tex-channel-system_prompt-label">
+                      {errors.system_prompt}
+                    </FormHelperText>
+                  ) : (
+                    <FormHelperText id="helper-tex-channel-system_prompt-label">
+                      {customizeT(inputPrompt.system_prompt)}
+                    </FormHelperText>
+                  )}
+                </FormControl>
+
+                <FormControl fullWidth>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        disabled={hasTag}
+                        checked={values.enable_search === true}
+                        onClick={() => {
+                          setFieldValue('enable_search', !values.enable_search);
+                        }}
+                      />
+                    }
+                    label={customizeT(inputLabel.enable_search)}
+                  />
+                  <FormHelperText id="helper-tex-enable_search-label">
+                    {customizeT(inputPrompt.enable_search)}
+                  </FormHelperText>
                 </FormControl>
 
                 {inputPrompt.model_mapping && (

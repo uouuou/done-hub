@@ -55,7 +55,7 @@ func (r *relayChat) setRequest() error {
 	otherArg := r.getOtherArg()
 
 	if otherArg == "search" {
-		handleSearch(r.c, &r.chatRequest)
+		handleSearch(r.c, &r.chatRequest, false)
 		return nil
 	}
 

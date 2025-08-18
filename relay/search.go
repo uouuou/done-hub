@@ -33,9 +33,11 @@ const search_template = `# 以下内容是基于用户发送的消息的搜索�
 # 用户消息为：
 %s`
 
-func handleSearch(c *gin.Context, request *types.ChatCompletionRequest) {
-	if !search.IsEnable() || request == nil || len(request.Messages) == 0 {
-		return
+func handleSearch(c *gin.Context, request *types.ChatCompletionRequest, isRelay bool) {
+	if !isRelay {
+		if !search.IsEnable() || request == nil || len(request.Messages) == 0 {
+			return
+		}
 	}
 
 	msgLen := len(request.Messages)

@@ -36,6 +36,7 @@ func getConfig() base.ProviderConfig {
 		BaseURL:             "https://api.siliconflow.cn",
 		ImagesGenerations:   "/v1/%s/text-to-image",
 		ChatCompletions:     "/v1/chat/completions",
+		Completions:         "v1/completions",
 		Embeddings:          "/v1/embeddings",
 		AudioTranscriptions: "/v1/audio/transcriptions",
 		AudioSpeech:         "/v1/audio/speech",
