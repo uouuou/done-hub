@@ -47,6 +47,7 @@ const RegisterForm = ({ ...others }) => {
   const [disableButton, setDisableButton] = useState(false);
 
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [showInviteCode, setShowInviteCode] = useState(false);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
@@ -92,6 +93,7 @@ const RegisterForm = ({ ...others }) => {
     }
 
     setShowEmailVerification(siteInfo.email_verification);
+    setShowInviteCode(siteInfo.invite_code_register);
     if (siteInfo.turnstile_check) {
       setTurnstileEnabled(true);
       setTurnstileSiteKey(siteInfo.turnstile_site_key);
@@ -121,6 +123,7 @@ const RegisterForm = ({ ...others }) => {
           confirmPassword: '',
           email: showEmailVerification ? '' : undefined,
           verification_code: showEmailVerification ? '' : undefined,
+          invite_code: showInviteCode ? '' : undefined,
           submit: null
         }}
         validationSchema={Yup.object().shape({
@@ -134,6 +137,9 @@ const RegisterForm = ({ ...others }) => {
             : Yup.mixed(),
           verification_code: showEmailVerification
             ? Yup.string().max(255).required(t('registerForm.verificationCodeRequired'))
+            : Yup.mixed(),
+          invite_code: showInviteCode
+            ? Yup.string().max(255).required('请输入邀请码')
             : Yup.mixed()
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
@@ -304,6 +310,30 @@ const RegisterForm = ({ ...others }) => {
                   )}
                 </FormControl>
               </>
+            )}
+
+            {showInviteCode && (
+              <FormControl
+                fullWidth
+                error={Boolean(touched.invite_code && errors.invite_code)}
+                sx={{ ...theme.typography.customInput }}
+              >
+                <InputLabel htmlFor="outlined-adornment-invite-code-register">邀请码</InputLabel>
+                <OutlinedInput
+                  id="outlined-adornment-invite-code-register"
+                  type="text"
+                  value={values.invite_code}
+                  name="invite_code"
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  inputProps={{}}
+                />
+                {touched.invite_code && errors.invite_code && (
+                  <FormHelperText error id="standard-weight-helper-text-invite-code-register">
+                    {errors.invite_code}
+                  </FormHelperText>
+                )}
+              </FormControl>
             )}
 
             {errors.submit && (

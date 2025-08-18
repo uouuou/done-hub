@@ -34,6 +34,7 @@ type User struct {
 	LinuxDoUsername   string         `json:"linuxdo_username" gorm:"column:linuxdo_username;index;default:'';"`
 	LinuxDoTrustLevel int            `json:"linuxdo_trust_level" gorm:"type:int;column:linuxdo_trust_level;default:0;"`
 	VerificationCode  string         `json:"verification_code" gorm:"-:all"`                                    // this field is only for Email verification, don't save it to database!
+	InviteCode        string         `json:"invite_code" gorm:"-:all"`                                          // this field is only for registration, don't save it to database!
 	AccessToken       string         `json:"access_token" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
 	Quota             int            `json:"quota" gorm:"type:int;default:0"`
 	UsedQuota         int            `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota

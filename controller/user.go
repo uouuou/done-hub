@@ -173,6 +173,28 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+
+	// 邀请码验证（优先级大于三方注册登录，小于允许新用户注册）
+	if config.InviteCodeRegisterEnabled {
+		if user.InviteCode == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "管理员开启了邀请码注册，请输入邀请码",
+			})
+			return
+		}
+
+		// 验证邀请码
+		err := model.ValidateInviteCode(user.InviteCode)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{

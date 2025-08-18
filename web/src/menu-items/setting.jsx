@@ -13,7 +13,8 @@ const icons = {
   IconBrandPaypal: () => <Icon width={20} icon="solar:wallet-money-bold-duotone" />,
   IconCoins: () => <Icon width={20} icon="solar:hand-money-bold-duotone" />,
   IconUsers: () => <Icon width={20} icon="solar:users-group-rounded-bold-duotone" />,
-  IconModel: () => <Icon width={20} icon="mingcute:ai-fill" />
+  IconModel: () => <Icon width={20} icon="mingcute:ai-fill" />,
+  IconTicket: () => <Icon width={20} icon="solar:ticket-bold-duotone" />
 };
 
 const Setting = {
@@ -129,6 +130,16 @@ const Setting = {
       icon: icons.IconUserScan,
       breadcrumbs: false,
       isAdmin: false
+    },
+
+    {
+      id: 'invite-code',
+      title: '邀请码管理',
+      type: 'item',
+      url: '/panel/setting?tab=invite',
+      icon: icons.IconTicket,
+      breadcrumbs: false,
+      isAdmin: true
     },
 
     {

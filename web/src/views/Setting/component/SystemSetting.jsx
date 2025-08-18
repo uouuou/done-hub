@@ -57,6 +57,7 @@ const SystemSetting = () => {
     WeChatServerToken: '',
     WeChatAccountQRCodeImageURL: '',
     TurnstileCheckEnabled: '',
+    InviteCodeRegisterEnabled: '',
     TurnstileSiteKey: '',
     TurnstileSecretKey: '',
     RegisterEnabled: '',
@@ -118,6 +119,7 @@ const SystemSetting = () => {
       case 'TurnstileCheckEnabled':
       case 'EmailDomainRestrictionEnabled':
       case 'RegisterEnabled':
+      case 'InviteCodeRegisterEnabled':
         value = inputs[key] === 'true' ? 'false' : 'true';
         break;
       default:
@@ -180,7 +182,7 @@ const SystemSetting = () => {
       name === 'LarkClientSecret'||
       name === 'LinuxDoClientId' ||
       name === 'LinuxDoClientSecret' ||
-      name === 'LinuxDoOAuthLowestTrustLevel' 
+      name === 'LinuxDoOAuthLowestTrustLevel'
     ) {
       setInputs((inputs) => ({ ...inputs, [name]: value }));
     } else {
@@ -390,6 +392,12 @@ const SystemSetting = () => {
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.registerEnabled')}
                 control={<Checkbox checked={inputs.RegisterEnabled === 'true'} onChange={handleInputChange} name="RegisterEnabled" />}
+              />
+            </Grid>
+            <Grid xs={12} md={3}>
+              <FormControlLabel
+                label="邀请码注册"
+                control={<Checkbox checked={inputs.InviteCodeRegisterEnabled === 'true'} onChange={handleInputChange} name="InviteCodeRegisterEnabled" />}
               />
             </Grid>
             <Grid xs={12} md={3}>

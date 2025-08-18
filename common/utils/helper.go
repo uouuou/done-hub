@@ -409,3 +409,11 @@ func GetLocalTimezone() string {
 
 	return "Asia/Shanghai"
 }
+
+func IntSliceToStringSlice(intSlice []int) []string {
+	stringSlice := make([]string, len(intSlice))
+	for i, v := range intSlice {
+		stringSlice[i] = strconv.Itoa(v)
+	}
+	return stringSlice
+}
