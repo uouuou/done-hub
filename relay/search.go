@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // 来自 https://github.com/deepseek-ai/DeepSeek-R1?tab=readme-ov-file#official-prompts
@@ -55,7 +56,10 @@ func handleSearch(c *gin.Context, request *types.ChatCompletionRequest, isRelay 
 	}
 
 	// 创建查询请求
-	queryModel := "gpt-4o-mini"
+	queryModel := viper.GetString("search.searxng.model")
+	if queryModel == "" {
+		queryModel = "gpt-4o-mini"
+	}
 	queryRequest := createSearchQueryRequest(userMsg, queryModel)
 
 	// 获取提供者并执行查询
