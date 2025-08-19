@@ -305,9 +305,12 @@ func (user *User) FillUserByOidcId() error {
 	if user.OidcId == "" {
 		return errors.New("OIDC ID 为空！")
 	}
-	err := DB.Where(User{OidcId: user.OidcId}).First(user)
-	if err != nil {
-		return err.Error
+	result := DB.Where(User{OidcId: user.OidcId}).First(user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return errors.New("没有找到用户！")
+		}
+		return result.Error
 	}
 	return nil
 }
@@ -316,9 +319,12 @@ func (user *User) FillUserByLinuxDOId() error {
 	if user.LinuxDoId == 0 {
 		return errors.New("LINUX DO ID 为空！")
 	}
-	err := DB.Where(User{LinuxDoId: user.LinuxDoId}).First(user)
-	if err != nil {
-		return err.Error
+	result := DB.Where(User{LinuxDoId: user.LinuxDoId}).First(user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return errors.New("没有找到用户！")
+		}
+		return result.Error
 	}
 	return nil
 }
@@ -327,9 +333,12 @@ func (user *User) FillUserByUsername() error {
 	if user.Username == "" {
 		return errors.New("username 为空！")
 	}
-	err := DB.Where(User{Username: user.Username}).First(user)
-	if err != nil {
-		return err.Error
+	result := DB.Where(User{Username: user.Username}).First(user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return errors.New("没有找到用户！")
+		}
+		return result.Error
 	}
 	return nil
 }

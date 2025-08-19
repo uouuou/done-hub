@@ -1,5 +1,4 @@
 import PropTypes from 'prop-types';
-import { marked } from 'marked';
 import { useMemo, useState, useEffect, useContext, useCallback, createContext } from 'react';
 
 import { API } from 'utils/api';
@@ -21,9 +20,7 @@ export function NoticeProvider({ children }) {
         const oldNotice = localStorage.getItem('notice');
 
         const processAndSetNotice = async (content) => {
-          const htmlNotice = marked(content).toString();
-
-          setNotice(htmlNotice);
+          setNotice(content);
           if (content !== oldNotice) {
             setOpen(true);
             localStorage.setItem('notice', content || '');
