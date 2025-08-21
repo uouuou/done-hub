@@ -1,21 +1,21 @@
-import { Icon } from '@iconify/react';
+import { Icon } from '@iconify/react'
 
 const icons = {
-  IconSitemap: () => <Icon width={20} icon="ph:open-ai-logo-duotone" />,
-  IconBasket: () => <Icon width={20} icon="solar:shop-bold-duotone" />,
-  IconKey: () => <Icon width={20} icon="solar:key-bold-duotone" />,
-  IconUser: () => <Icon width={20} icon="solar:user-bold-duotone" />,
-  IconUserScan: () => <Icon width={20} icon="solar:user-id-bold-duotone" />,
-  IconReceipt2: () => <Icon width={20} icon="solar:document-bold-duotone" />,
-  IconSettingsCog: () => <Icon width={20} icon="solar:settings-bold-duotone" />,
-  IconBrandTelegram: () => <Icon width={20} icon="solar:plain-bold-duotone" />,
-  IconCoin: () => <Icon width={20} icon="solar:dollar-minimalistic-bold-duotone" />,
-  IconBrandPaypal: () => <Icon width={20} icon="solar:wallet-money-bold-duotone" />,
-  IconCoins: () => <Icon width={20} icon="solar:hand-money-bold-duotone" />,
-  IconUsers: () => <Icon width={20} icon="solar:users-group-rounded-bold-duotone" />,
-  IconModel: () => <Icon width={20} icon="mingcute:ai-fill" />,
-  IconTicket: () => <Icon width={20} icon="solar:ticket-bold-duotone" />
-};
+  IconSitemap: () => <Icon width={20} icon="ph:open-ai-logo-duotone"/>,
+  IconBasket: () => <Icon width={20} icon="solar:shop-bold-duotone"/>,
+  IconKey: () => <Icon width={20} icon="solar:key-bold-duotone"/>,
+  IconUser: () => <Icon width={20} icon="solar:user-bold-duotone"/>,
+  IconUserScan: () => <Icon width={20} icon="solar:user-id-bold-duotone"/>,
+  IconReceipt2: () => <Icon width={20} icon="solar:document-bold-duotone"/>,
+  IconSettingsCog: () => <Icon width={20} icon="solar:settings-bold-duotone"/>,
+  IconBrandTelegram: () => <Icon width={20} icon="solar:plain-bold-duotone"/>,
+  IconCoin: () => <Icon width={20} icon="solar:dollar-minimalistic-bold-duotone"/>,
+  IconBrandPaypal: () => <Icon width={20} icon="solar:wallet-money-bold-duotone"/>,
+  IconCoins: () => <Icon width={20} icon="solar:hand-money-bold-duotone"/>,
+  IconUsers: () => <Icon width={20} icon="solar:users-group-rounded-bold-duotone"/>,
+  IconModel: () => <Icon width={20} icon="mingcute:ai-fill"/>,
+  IconTicket: () => <Icon width={20} icon="solar:ticket-bold-duotone"/>
+}
 
 const Setting = {
   id: 'setting',
@@ -133,16 +133,6 @@ const Setting = {
     },
 
     {
-      id: 'invite-code',
-      title: '邀请码管理',
-      type: 'item',
-      url: '/panel/setting?tab=invite',
-      icon: icons.IconTicket,
-      breadcrumbs: false,
-      isAdmin: true
-    },
-
-    {
       id: 'setting',
       title: '设置',
       type: 'item',
@@ -152,6 +142,6 @@ const Setting = {
       isAdmin: true
     }
   ]
-};
+}
 
-export default Setting;
+export default Setting

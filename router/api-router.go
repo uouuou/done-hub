@@ -116,7 +116,7 @@ func SetApiRouter(router *gin.Engine) {
 		inviteCodeRoute.Use(middleware.AdminAuth())
 		{
 			inviteCodeRoute.GET("/", controller.GetInviteCodesList)
-			inviteCodeRoute.GET("/statistics", controller.GetInviteCodeStatistics)
+			inviteCodeRoute.GET("/generate", controller.GenerateRandomInviteCode)
 			inviteCodeRoute.GET("/:id", controller.GetInviteCode)
 			inviteCodeRoute.POST("/", controller.CreateInviteCode)
 			inviteCodeRoute.PUT("/:id", controller.UpdateInviteCode)

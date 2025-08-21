@@ -17,11 +17,54 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+// getFriendlyValidationMessage 将验证错误转换为友好的中文提示
+func getFriendlyValidationMessage(err error) string {
+	if validationErrors, ok := err.(validator.ValidationErrors); ok {
+		for _, fieldError := range validationErrors {
+			field := fieldError.Field()
+			tag := fieldError.Tag()
+
+			switch field {
+			case "Username":
+				switch tag {
+				case "required":
+					return "用户名不能为空"
+				case "max":
+					return "用户名长度不能超过12个字符"
+				}
+			case "Password":
+				switch tag {
+				case "required":
+					return "密码不能为空"
+				case "min":
+					return "密码长度不能少于8个字符"
+				case "max":
+					return "密码长度不能超过20个字符"
+				}
+			case "DisplayName":
+				switch tag {
+				case "max":
+					return "显示名称长度不能超过20个字符"
+				}
+			case "Email":
+				switch tag {
+				case "email":
+					return "邮箱格式不正确"
+				case "max":
+					return "邮箱长度不能超过50个字符"
+				}
+			}
+		}
+	}
+	return "输入参数不符合要求"
 }
 
 func Login(c *gin.Context) {
@@ -132,18 +175,29 @@ func Register(c *gin.Context) {
 		return
 	}
 	var user model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&user)
+	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": err.Error(),
 		})
 		return
 	}
-	if err := common.Validate.Struct(&user); err != nil {
+	// 密码注册特定验证
+	if strings.TrimSpace(user.Password) == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "输入不合法 " + err.Error(),
+			"message": "密码不能为空",
+		})
+		return
+	}
+
+	if err := common.Validate.Struct(&user); err != nil {
+		// 友好的验证错误提示
+		friendlyMessage := getFriendlyValidationMessage(err)
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": friendlyMessage,
 		})
 		return
 	}
@@ -174,7 +228,7 @@ func Register(c *gin.Context) {
 		}
 	}
 
-	// 邀请码验证（优先级大于三方注册登录，小于允许新用户注册）
+	// 邀请码验证（仅适用于密码注册，三方登录注册不需要邀请码）
 	if config.InviteCodeRegisterEnabled {
 		if user.InviteCode == "" {
 			c.JSON(http.StatusOK, gin.H{
@@ -198,10 +252,11 @@ func Register(c *gin.Context) {
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
-		Username:    user.Username,
-		Password:    user.Password,
-		DisplayName: user.Username,
-		InviterId:   inviterId,
+		Username:       user.Username,
+		Password:       user.Password,
+		DisplayName:    user.Username,
+		InviterId:      inviterId,
+		UsedInviteCode: user.InviteCode, // 保存使用的邀请码
 	}
 	if config.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
@@ -581,18 +636,37 @@ func DeleteUser(c *gin.Context) {
 
 func CreateUser(c *gin.Context) {
 	var user model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&user)
-	if err != nil || strings.TrimSpace(user.Username) == "" || strings.TrimSpace(user.Password) == "" {
+	err := c.ShouldBindJSON(&user)
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// 管理员创建用户时的特定验证
+	if strings.TrimSpace(user.Username) == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "用户名不能为空",
+		})
+		return
+	}
+
+	if strings.TrimSpace(user.Password) == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "密码不能为空",
 		})
 		return
 	}
 	if err := common.Validate.Struct(&user); err != nil {
+		// 友好的验证错误提示
+		friendlyMessage := getFriendlyValidationMessage(err)
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "输入不合法 " + err.Error(),
+			"message": friendlyMessage,
 		})
 		return
 	}

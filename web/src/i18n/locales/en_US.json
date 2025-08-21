@@ -832,7 +832,9 @@
     "usernameRequired": "Username is required",
     "validEmailRequired": "Must be a valid email address",
     "verificationCodeRequired": "Verification code is required",
-    "verificationInfo": "Please try again in a few seconds, Turnstile is checking the user environment!"
+    "verificationInfo": "Please try again in a few seconds, Turnstile is checking the user environment!",
+    "registering": "Registering...",
+    "inviteCodeRequired": "Invite code is required"
   },
   "registerPage": {
     "alreadyHaveAccount": "Already have an account? Click to login"
