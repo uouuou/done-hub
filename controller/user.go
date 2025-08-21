@@ -13,7 +13,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -228,22 +231,12 @@ func Register(c *gin.Context) {
 		}
 	}
 
-	// 邀请码验证（仅适用于密码注册，三方登录注册不需要邀请码）
+	// 邀请码基本验证（仅适用于密码注册，三方登录注册不需要邀请码）
 	if config.InviteCodeRegisterEnabled {
 		if user.InviteCode == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": "管理员开启了邀请码注册，请输入邀请码",
-			})
-			return
-		}
-
-		// 验证邀请码
-		err := model.ValidateInviteCode(user.InviteCode)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": err.Error(),
 			})
 			return
 		}
@@ -261,13 +254,78 @@ func Register(c *gin.Context) {
 	if config.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
 	}
-	if err := cleanUser.Insert(inviterId); err != nil {
+
+	// 如果需要使用邀请码，先获取锁（按照order.go的模式）
+	if config.InviteCodeRegisterEnabled && user.InviteCode != "" {
+		// 优先使用Redis分布式锁，失败时使用内存锁
+		if config.RedisEnabled {
+			mutex, lockErr := model.AcquireInviteCodeLock(user.InviteCode)
+			if lockErr == nil && mutex != nil {
+				defer func() {
+					unlockOk, unlockErr := mutex.Unlock()
+					if unlockErr != nil || !unlockOk {
+						// 注册过程中的解锁失败不应该影响用户注册结果，只记录日志
+						// logger.SysError(fmt.Sprintf("failed to unlock invite code %s: ok=%v, err=%v", user.InviteCode, unlockOk, unlockErr))
+					}
+				}()
+			} else {
+				// Redis锁失败，降级到内存锁
+				model.LockInviteCode(user.InviteCode)
+				defer model.UnlockInviteCode(user.InviteCode)
+			}
+		} else {
+			// 无Redis时使用内存锁
+			model.LockInviteCode(user.InviteCode)
+			defer model.UnlockInviteCode(user.InviteCode)
+		}
+
+		// 在锁保护下验证邀请码（防止TOCTOU攻击）
+		err := model.CheckInviteCode(user.InviteCode)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+
+	// 使用事务确保用户创建和邀请码使用的原子性
+	err = model.DB.Transaction(func(tx *gorm.DB) error {
+		// 在事务中创建用户
+		if err := cleanUser.InsertWithTx(tx, inviterId); err != nil {
+			return err
+		}
+
+		// 在事务中增加邀请码使用次数
+		if config.InviteCodeRegisterEnabled && user.InviteCode != "" {
+			if err := model.UseInviteCodeWithTx(tx, user.InviteCode); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
 		return
 	}
+
+	// 事务提交成功后，刷新相关缓存
+	if config.RedisEnabled {
+		// 刷新用户配额缓存（如果有邀请奖励）
+		if inviterId != 0 && config.QuotaForInviter > 0 {
+			model.CacheUpdateUserQuota(inviterId)
+		}
+		if config.QuotaForInvitee > 0 {
+			model.CacheUpdateUserQuota(cleanUser.Id)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

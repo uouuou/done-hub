@@ -1,10 +1,18 @@
 package model
 
 import (
+	"done-hub/common/config"
+	"done-hub/common/logger"
+	"done-hub/common/redis"
 	"done-hub/common/utils"
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"gorm.io/gorm"
 )
 
@@ -26,6 +34,80 @@ const (
 	InviteCodeStatusEnabled  = 1
 	InviteCodeStatusDisabled = 2
 )
+
+// 邀请码锁机制
+var inviteCodeLocks sync.Map
+var inviteCodeCreateLock sync.Mutex
+var redsyncInstance *redsync.Redsync
+var redsyncOnce sync.Once
+
+// InitInviteCodeLock 初始化邀请码锁系统（按照项目风格）
+func InitInviteCodeLock() {
+	redsyncOnce.Do(func() {
+		if config.RedisEnabled && redis.RDB != nil {
+			pool := goredis.NewPool(redis.RDB)
+			redsyncInstance = redsync.New(pool)
+			logger.SysLog("invite code distributed lock initialized with Redis")
+		} else {
+			logger.SysLog("invite code lock initialized with memory lock")
+		}
+	})
+}
+
+// 内部初始化函数（保持向后兼容）
+func initRedsync() {
+	InitInviteCodeLock()
+}
+
+// LockInviteCode 对邀请码加锁
+func LockInviteCode(code string) {
+	lock, ok := inviteCodeLocks.Load(code)
+	if !ok {
+		inviteCodeCreateLock.Lock()
+		defer inviteCodeCreateLock.Unlock()
+		lock, ok = inviteCodeLocks.Load(code)
+		if !ok {
+			lock = new(sync.Mutex)
+			inviteCodeLocks.Store(code, lock)
+		}
+	}
+	lock.(*sync.Mutex).Lock()
+}
+
+// UnlockInviteCode 释放邀请码锁
+func UnlockInviteCode(code string) {
+	lock, ok := inviteCodeLocks.Load(code)
+	if ok {
+		lock.(*sync.Mutex).Unlock()
+		// 可选：清理长时间未使用的锁（简单实现，避免内存泄漏）
+		// 在生产环境中可以考虑更复杂的LRU清理策略
+	}
+}
+
+// AcquireInviteCodeLock 获取邀请码分布式锁（使用redsync）
+func AcquireInviteCodeLock(code string) (*redsync.Mutex, error) {
+	if !config.RedisEnabled {
+		return nil, errors.New("Redis not enabled")
+	}
+
+	initRedsync()
+	if redsyncInstance == nil {
+		return nil, errors.New("redsync not initialized")
+	}
+
+	lockKey := fmt.Sprintf("invite_code_lock:%s", code)
+	mutex := redsyncInstance.NewMutex(lockKey,
+		redsync.WithExpiry(30*time.Second),
+		redsync.WithTries(1),
+	)
+
+	err := mutex.Lock()
+	if err != nil {
+		return nil, err
+	}
+
+	return mutex, nil
+}
 
 var allowedInviteCodeOrderFields = map[string]bool{
 	"id":           true,
@@ -95,16 +177,78 @@ func GetInviteCodeById(id int) (*InviteCode, error) {
 	return &inviteCode, err
 }
 
-// ValidateInviteCode 验证邀请码是否有效并使用
-func ValidateInviteCode(code string) error {
+// CheckInviteCode 只验证邀请码有效性，不增加使用次数
+func CheckInviteCode(code string) error {
 	if code == "" {
 		return errors.New("邀请码不能为空")
 	}
 
 	var inviteCode InviteCode
+	err := DB.Where("code = ?", code).First(&inviteCode).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("邀请码无效")
+		}
+		return err
+	}
+
+	// 检查邀请码状态
+	if inviteCode.Status != InviteCodeStatusEnabled {
+		return errors.New("邀请码无效")
+	}
+
+	now := utils.GetTimestamp()
+
+	// 检查是否已生效
+	if inviteCode.StartsAt > 0 && inviteCode.StartsAt > now {
+		return errors.New("邀请码无效")
+	}
+
+	// 检查是否过期
+	if inviteCode.ExpiresAt > 0 && inviteCode.ExpiresAt < now {
+		return errors.New("邀请码无效")
+	}
+
+	// 检查使用次数（MaxUses = 0 表示无限使用）
+	if inviteCode.MaxUses > 0 && inviteCode.UsedCount >= inviteCode.MaxUses {
+		return errors.New("邀请码无效")
+	}
+
+	return nil
+}
+
+// UseInviteCode 使用邀请码，增加使用次数
+func UseInviteCode(code string) error {
+	if code == "" {
+		return errors.New("邀请码不能为空")
+	}
+
+	// 优先使用Redis分布式锁，失败时使用内存锁
+	if config.RedisEnabled {
+		mutex, err := AcquireInviteCodeLock(code)
+		if err == nil && mutex != nil {
+			defer func() {
+				unlockOk, unlockErr := mutex.Unlock()
+				if unlockErr != nil || !unlockOk {
+					logger.SysError(fmt.Sprintf("failed to unlock invite code %s: ok=%v, err=%v", code, unlockOk, unlockErr))
+				}
+			}()
+		} else {
+			// Redis锁失败，记录警告并降级到内存锁
+			logger.SysError(fmt.Sprintf("failed to acquire Redis lock for invite code %s, fallback to memory lock: %v", code, err))
+			LockInviteCode(code)
+			defer UnlockInviteCode(code)
+		}
+	} else {
+		// 无Redis时使用内存锁
+		LockInviteCode(code)
+		defer UnlockInviteCode(code)
+	}
+
+	var inviteCode InviteCode
 	err := DB.Transaction(func(tx *gorm.DB) error {
-		// 加锁查询邀请码
-		err := tx.Set("gorm:query_option", "FOR UPDATE").Where("code = ?", code).First(&inviteCode).Error
+		// 查询邀请码
+		err := tx.Where("code = ?", code).First(&inviteCode).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.New("邀请码无效")
@@ -147,6 +291,68 @@ func ValidateInviteCode(code string) error {
 	})
 
 	return err
+}
+
+// UseInviteCodeWithTx 在指定事务中使用邀请码，增加使用次数
+// 注意：此函数在事务中调用，外层已有锁保护
+func UseInviteCodeWithTx(tx *gorm.DB, code string) error {
+	if code == "" {
+		return errors.New("邀请码不能为空")
+	}
+
+	var inviteCode InviteCode
+	// 查询邀请码（在事务中已经有外部锁保护）
+	err := tx.Where("code = ?", code).First(&inviteCode).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("邀请码无效")
+		}
+		return err
+	}
+
+	// 检查邀请码状态
+	if inviteCode.Status != InviteCodeStatusEnabled {
+		return errors.New("邀请码无效")
+	}
+
+	now := utils.GetTimestamp()
+
+	// 检查是否已生效
+	if inviteCode.StartsAt > 0 && inviteCode.StartsAt > now {
+		return errors.New("邀请码无效")
+	}
+
+	// 检查是否过期
+	if inviteCode.ExpiresAt > 0 && inviteCode.ExpiresAt < now {
+		return errors.New("邀请码无效")
+	}
+
+	// 检查使用次数（MaxUses = 0 表示无限使用）
+	if inviteCode.MaxUses > 0 && inviteCode.UsedCount >= inviteCode.MaxUses {
+		return errors.New("邀请码无效")
+	}
+
+	// 增加使用次数
+	inviteCode.UsedCount++
+	inviteCode.UpdatedTime = utils.GetTimestamp()
+
+	// 如果使用次数达到上限，自动禁用（MaxUses = 0 表示无限使用，不禁用）
+	if inviteCode.MaxUses > 0 && inviteCode.UsedCount >= inviteCode.MaxUses {
+		inviteCode.Status = InviteCodeStatusDisabled
+	}
+
+	return tx.Save(&inviteCode).Error
+}
+
+// ValidateInviteCode 验证邀请码是否有效并使用（保持向后兼容）
+// 已废弃：建议使用 CheckInviteCode + UseInviteCode 的组合
+func ValidateInviteCode(code string) error {
+	// 先检查有效性
+	if err := CheckInviteCode(code); err != nil {
+		return err
+	}
+	// 再增加使用次数
+	return UseInviteCode(code)
 }
 
 func (inviteCode *InviteCode) Insert() error {

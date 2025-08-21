@@ -169,6 +169,53 @@ func (user *User) Insert(inviterId int) error {
 	return nil
 }
 
+// InsertWithTx 在指定事务中创建用户
+func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
+	if strings.TrimSpace(user.Username) == "" {
+		return errors.New("用户名不能为空！")
+	}
+	if RecordExistsWithTx(tx, &User{}, "username", user.Username, nil) {
+		return errors.New("用户名已存在！")
+	}
+
+	// 如果提供了邮箱，进行严格验证
+	if user.Email != "" {
+		if err := common.ValidateEmailStrict(user.Email); err != nil {
+			return errors.New("邮箱格式不符合要求")
+		}
+	}
+	var err error
+	if user.Password != "" {
+		user.Password, err = common.Password2Hash(user.Password)
+		if err != nil {
+			return err
+		}
+	}
+	user.Quota = config.QuotaForNewUser
+	user.AccessToken = utils.GetUUID()
+	user.AffCode = utils.GetRandomString(4)
+	user.CreatedTime = utils.GetTimestamp()
+	result := tx.Create(user)
+	if result.Error != nil {
+		return result.Error
+	}
+	if config.QuotaForNewUser > 0 {
+		RecordLogWithTx(tx, user.Id, LogTypeSystem, fmt.Sprintf("新用户注册赠送 %s", common.LogQuota(config.QuotaForNewUser)))
+	}
+	if inviterId != 0 {
+		if config.QuotaForInvitee > 0 {
+			_ = IncreaseUserQuotaWithTx(tx, user.Id, config.QuotaForInvitee)
+			RecordLogWithTx(tx, user.Id, LogTypeSystem, fmt.Sprintf("使用邀请码赠送 %s", common.LogQuota(config.QuotaForInvitee)))
+		}
+		// 注册时的邀请奖励保持原有逻辑，充值时的返利使用新的配置
+		if config.QuotaForInviter > 0 {
+			_ = IncreaseUserQuotaWithTx(tx, inviterId, config.QuotaForInviter)
+			RecordLogWithTx(tx, inviterId, LogTypeSystem, fmt.Sprintf("邀请用户赠送 %s", common.LogQuota(config.QuotaForInviter)))
+		}
+	}
+	return nil
+}
+
 func (user *User) Update(updatePassword bool) error {
 	var err error
 	omitFields := []string{"quota", "used_quota", "request_count", "aff_count", "aff_quota", "aff_history"}
@@ -490,6 +537,20 @@ func increaseUserQuota(id int, quota int) (err error) {
 		// 直接删除缓存键，下次读取时会重新写入最新值
 		redis.RedisDel(fmt.Sprintf(UserQuotaCacheKey, id))
 	}
+	return nil
+}
+
+// IncreaseUserQuotaWithTx 在指定事务中增加用户配额
+func IncreaseUserQuotaWithTx(tx *gorm.DB, id int, quota int) (err error) {
+	if quota < 0 {
+		return errors.New("quota 不能为负数！")
+	}
+	// 注意：在事务中不支持批量更新，直接执行数据库操作
+	err = tx.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", quota)).Error
+	if err != nil {
+		return err
+	}
+	// 注意：在事务中不刷新缓存，等事务提交后再刷新
 	return nil
 }
 

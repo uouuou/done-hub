@@ -278,10 +278,11 @@ const InviteCodeSetting = () => {
       if (newValue) {
         const now = Math.floor(Date.now() / 1000)
         const hasValidCodes = Array.isArray(inviteCodes) && inviteCodes.some(code =>
-          code.status === INVITE_CODE_CONFIG.STATUS.ENABLED &&
-          (code.max_uses === 0 || code.used_count < code.max_uses) &&
-          (code.starts_at === 0 || code.starts_at <= now) &&
-          (code.expires_at === 0 || code.expires_at > now)
+            code.status === INVITE_CODE_CONFIG.STATUS.ENABLED &&
+            (code.max_uses === 0 || code.used_count < code.max_uses)
+          // &&
+          // (code.starts_at === 0 || code.starts_at <= now) &&
+          // (code.expires_at === 0 || code.expires_at > now)
         )
 
         if (!hasValidCodes) {
@@ -774,8 +775,8 @@ const InviteCodeSetting = () => {
         <ConfirmDialog
           open={batchDeleteConfirm}
           onClose={() => setBatchDeleteConfirm(false)}
-          title="批量删除邀请码"
-          content={`确定要删除选中的 ${selectedCodes.length} 个邀请码吗？此操作不可撤销。`}
+          title={t('common.delete')}
+          content={t('common.deleteConfirm', { title: `选中的 ${selectedCodes.length} 个邀请码` })}
           action={
             <Button
               variant="contained"

@@ -59,6 +59,8 @@ func main() {
 	// Initialize Redis
 	redis.InitRedisClient()
 	cache.InitCacheManager()
+	// Initialize invite code lock system
+	model.InitInviteCodeLock()
 	// Initialize options
 	model.InitOptionMap()
 	// Initialize oidc

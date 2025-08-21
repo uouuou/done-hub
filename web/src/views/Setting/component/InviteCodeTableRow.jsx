@@ -1,9 +1,10 @@
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
-import { Checkbox, IconButton, TableCell, TableRow, Tooltip } from '@mui/material'
+import { Button, Checkbox, IconButton, TableCell, TableRow, Tooltip } from '@mui/material'
 import { Icon } from '@iconify/react'
 import Label from 'ui-component/Label'
 import TableSwitch from 'ui-component/Switch'
+import ConfirmDialog from 'ui-component/confirm-dialog'
 import { copy, showError, showSuccess, timestamp2string } from 'utils/common'
 import { API } from 'utils/api'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +19,7 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
   const { t } = useTranslation()
   const [statusSwitch, setStatusSwitch] = useState(item.status)
   const [statusLoading, setStatusLoading] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   // 当item.status变化时，同步更新本地状态
   useEffect(() => {
@@ -56,8 +58,6 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
   }
 
   const handleDelete = async() => {
-    if (!window.confirm('确定要删除这个邀请码吗？')) return
-
     try {
       const res = await API.delete(`/api/invite-code/${item.id}`)
       const { success, message } = res.data
@@ -70,6 +70,7 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
     } catch (error) {
       showError('删除失败')
     }
+    setDeleteConfirm(false)
   }
 
   const handleCopyCode = () => {
@@ -90,58 +91,76 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
   }
 
   return (
-    <TableRow tabIndex={item.id}>
-      <TableCell>
-        <Checkbox
-          checked={selected}
-          onChange={onSelectRow}
-        />
-      </TableCell>
-      <TableCell>{item.id}</TableCell>
-      <TableCell>
-        <Label
-          variant="soft"
-          color="default"
-          sx={{
-            fontFamily: 'monospace',
-            fontSize: '0.875rem',
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: 'primary.light',
-              color: 'primary.main'
-            }
-          }}
-          onClick={handleCopyCode}
-        >
-          {item.code}
-        </Label>
-      </TableCell>
-      <TableCell>{item.name || '-'}</TableCell>
-      <TableCell>
-        {item.used_count} / {item.max_uses === 0 ? '∞' : item.max_uses}
-      </TableCell>
-      <TableCell>{formatDate(item.starts_at, '立即生效')}</TableCell>
-      <TableCell>{formatDate(item.expires_at, '永不过期')}</TableCell>
-      <TableCell>{formatDate(item.created_time)}</TableCell>
-      <TableCell>
-        <Tooltip title="点击切换状态">
-          <TableSwitch
-            id={`switch-${item.id}`}
-            checked={statusSwitch === STATUS.ENABLED}
-            onChange={handleStatus}
-            disabled={statusLoading}
+    <>
+      <TableRow tabIndex={item.id}>
+        <TableCell>
+          <Checkbox
+            checked={selected}
+            onChange={onSelectRow}
           />
-        </Tooltip>
-      </TableCell>
-      <TableCell>
-        <IconButton onClick={() => handleOpenModal(item)} sx={{ color: 'rgb(99, 115, 129)' }}>
-          <Icon icon="solar:pen-bold-duotone"/>
-        </IconButton>
-        <IconButton onClick={handleDelete} sx={{ color: 'rgb(99, 115, 129)' }}>
-          <Icon icon="solar:trash-bin-trash-bold-duotone"/>
-        </IconButton>
-      </TableCell>
-    </TableRow>
+        </TableCell>
+        <TableCell>{item.id}</TableCell>
+        <TableCell>
+          <Label
+            variant="soft"
+            color="default"
+            sx={{
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: 'primary.light',
+                color: 'primary.main'
+              }
+            }}
+            onClick={handleCopyCode}
+          >
+            {item.code}
+          </Label>
+        </TableCell>
+        <TableCell>{item.name || '-'}</TableCell>
+        <TableCell>
+          {item.used_count} / {item.max_uses === 0 ? '∞' : item.max_uses}
+        </TableCell>
+        <TableCell>{formatDate(item.starts_at, '立即生效')}</TableCell>
+        <TableCell>{formatDate(item.expires_at, '永不过期')}</TableCell>
+        <TableCell>{formatDate(item.created_time)}</TableCell>
+        <TableCell>
+          <Tooltip title="点击切换状态">
+            <TableSwitch
+              id={`switch-${item.id}`}
+              checked={statusSwitch === STATUS.ENABLED}
+              onChange={handleStatus}
+              disabled={statusLoading}
+            />
+          </Tooltip>
+        </TableCell>
+        <TableCell>
+          <IconButton onClick={() => handleOpenModal(item)} sx={{ color: 'rgb(99, 115, 129)' }}>
+            <Icon icon="solar:pen-bold-duotone"/>
+          </IconButton>
+          <IconButton onClick={() => setDeleteConfirm(true)} sx={{ color: 'rgb(99, 115, 129)' }}>
+            <Icon icon="solar:trash-bin-trash-bold-duotone"/>
+          </IconButton>
+        </TableCell>
+      </TableRow>
+
+      <ConfirmDialog
+        open={deleteConfirm}
+        onClose={() => setDeleteConfirm(false)}
+        title={t('common.delete')}
+        content={t('common.deleteConfirm', { title: `邀请码 "${item.name || item.code}"` })}
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+          >
+            删除
+          </Button>
+        }
+      />
+    </>
   )
 }
 
