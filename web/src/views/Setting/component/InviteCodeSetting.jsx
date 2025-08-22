@@ -27,6 +27,7 @@ import {
   FormControl,
   FormControlLabel,
   IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
@@ -360,6 +361,16 @@ const InviteCodeSetting = () => {
     setSubmitting(false)
   }
 
+  // 时间验证函数
+  const getTimeValidationError = () => {
+    if (formData.starts_at && formData.expires_at) {
+      if (formData.starts_at.isAfter(formData.expires_at) || formData.starts_at.isSame(formData.expires_at)) {
+        return '生效结束时间必须大于生效起始时间'
+      }
+    }
+    return null
+  }
+
   // 生成随机邀请码
   const generateRandomCode = async() => {
     if (generating) return
@@ -417,7 +428,7 @@ const InviteCodeSetting = () => {
     }
 
     // 时间验证
-    if (formData.starts_at && formData.expires_at && formData.starts_at.isSameOrAfter(formData.expires_at)) {
+    if (formData.starts_at && formData.expires_at && (formData.starts_at.isAfter(formData.expires_at) || formData.starts_at.isSame(formData.expires_at))) {
       showError('生效结束时间必须大于开始时间')
       return false
     }
@@ -760,59 +771,59 @@ const InviteCodeSetting = () => {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 margin="normal"
               />
-              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                <TextField
-                  fullWidth
-                  label="邀请码"
-                  value={formData.code}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    // 实时过滤特殊字符
-                    const filteredValue = value.replace(/[^a-zA-Z0-9_-]/g, '')
-                    setFormData({ ...formData, code: filteredValue })
-                  }}
-                  placeholder="留空自动生成或手动输入"
-                  disabled={formData.count > 1 || generating || editingCode}
-                  helperText={
-                    editingCode
-                      ? '编辑时邀请码不可修改'
-                      : formData.count > 1
-                        ? '批量创建时将自动生成邀请码'
-                        : '只能包含字母、数字、下划线和短横线'
-                  }
-                />
-                {!editingCode && (
-                  <IconButton
-                    onClick={generateRandomCode}
-                    disabled={formData.count > 1 || generating}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      width: 56,
-                      height: 56,
-                      flexShrink: 0,
-                      '&:hover': {
-                        borderColor: 'primary.main',
-                        backgroundColor: 'primary.light'
-                      },
-                      ...(generating && {
-                        bgcolor: 'action.hover',
-                        color: 'primary.main'
-                      })
-                    }}
-                  >
-                    <Icon
-                      icon="solar:refresh-bold-duotone"
-                      style={{
-                        ...(generating && {
-                          animation: 'spin 1s linear infinite'
-                        })
-                      }}
-                    />
-                  </IconButton>
-                )}
-              </Box>
+              <TextField
+                fullWidth
+                label="邀请码"
+                value={formData.code}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // 实时过滤特殊字符
+                  const filteredValue = value.replace(/[^a-zA-Z0-9_-]/g, '')
+                  setFormData({ ...formData, code: filteredValue })
+                }}
+                placeholder="留空自动生成或手动输入"
+                disabled={formData.count > 1 || generating || editingCode}
+                margin="normal"
+                helperText={
+                  editingCode
+                    ? '编辑时邀请码不可修改'
+                    : formData.count > 1
+                      ? '批量创建时将自动生成邀请码'
+                      : '只能包含字母、数字、下划线和短横线'
+                }
+                InputProps={{
+                  endAdornment: !editingCode && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={generateRandomCode}
+                        disabled={formData.count > 1 || generating}
+                        edge="end"
+                        sx={{
+                          color: 'primary.main',
+                          '&:hover': {
+                            backgroundColor: 'primary.light'
+                          },
+                          '&:disabled': {
+                            color: 'action.disabled'
+                          },
+                          ...(generating && {
+                            color: 'primary.dark'
+                          })
+                        }}
+                      >
+                        <Icon
+                          icon="solar:refresh-bold-duotone"
+                          style={{
+                            ...(generating && {
+                              animation: 'spin 1s linear infinite'
+                            })
+                          }}
+                        />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
               <TextField
                 fullWidth
                 label="最大使用次数"
@@ -836,7 +847,7 @@ const InviteCodeSetting = () => {
                 />
               )}
               <DateTimePicker
-                label="生效开始时间"
+                label="生效起始时间"
                 value={formData.starts_at}
                 onChange={(newValue) => {
                   // 如果结束时间已设置且小于新的开始时间，则清空结束时间
@@ -850,7 +861,8 @@ const InviteCodeSetting = () => {
                   textField: {
                     fullWidth: true,
                     margin: 'normal',
-                    helperText: '留空表示立即生效'
+                    error: !!getTimeValidationError(),
+                    helperText: getTimeValidationError() || '留空表示立即生效'
                   },
                   actionBar: {
                     actions: ['clear', 'today', 'accept']
@@ -861,17 +873,14 @@ const InviteCodeSetting = () => {
                 label="生效结束时间"
                 value={formData.expires_at}
                 onChange={(newValue) => {
-                  // 验证结束时间必须大于开始时间
-                  if (newValue && formData.starts_at && newValue.isBefore(formData.starts_at)) {
-                    return // 不允许设置小于开始时间的结束时间
-                  }
                   setFormData({ ...formData, expires_at: newValue })
                 }}
                 slotProps={{
                   textField: {
                     fullWidth: true,
                     margin: 'normal',
-                    helperText: '留空表示永不过期'
+                    error: !!getTimeValidationError(),
+                    helperText: getTimeValidationError() || '留空表示永不过期'
                   },
                   actionBar: {
                     actions: ['clear', 'today', 'accept']

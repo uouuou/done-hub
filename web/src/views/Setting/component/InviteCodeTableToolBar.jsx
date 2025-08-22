@@ -88,7 +88,7 @@ export default function InviteCodeTableToolBar({ filterName, handleFilterName, o
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
           <FormControl>
             <DateTimePicker
-              label="生效时间起"
+              label="生效起始时间"
               name="starts_at_from"
               value={filterName.starts_at_from === 0 ? null : dayjs.unix(filterName.starts_at_from)}
               onChange={(value) => {
@@ -118,7 +118,7 @@ export default function InviteCodeTableToolBar({ filterName, handleFilterName, o
         <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
           <FormControl>
             <DateTimePicker
-              label="生效时间止"
+              label="生效结束时间"
               name="starts_at_to"
               value={filterName.starts_at_to === 0 ? null : dayjs.unix(filterName.starts_at_to)}
               onChange={(value) => {

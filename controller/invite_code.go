@@ -136,7 +136,7 @@ func CreateInviteCode(c *gin.Context) {
 	if req.StartsAt > 0 && req.ExpiresAt > 0 && req.StartsAt >= req.ExpiresAt {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "生效结束时间必须大于开始时间",
+			"message": "生效结束时间必须大于生效起始时间",
 		})
 		return
 	}
@@ -275,7 +275,7 @@ func UpdateInviteCode(c *gin.Context) {
 	if req.StartsAt > 0 && req.ExpiresAt > 0 && req.StartsAt >= req.ExpiresAt {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "生效结束时间必须大于开始时间",
+			"message": "生效结束时间必须大于生效起始时间",
 		})
 		return
 	}
