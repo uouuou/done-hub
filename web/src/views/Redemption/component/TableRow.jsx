@@ -1,63 +1,51 @@
-import PropTypes from 'prop-types';
-import { useState } from 'react';
+import PropTypes from 'prop-types'
+import { useState } from 'react'
 
-import {
-  Popover,
-  TableRow,
-  MenuItem,
-  TableCell,
-  IconButton,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Button,
-  Stack
-} from '@mui/material';
+import { Button, IconButton, MenuItem, Popover, Stack, TableCell, TableRow } from '@mui/material'
 
-import Label from 'ui-component/Label';
-import TableSwitch from 'ui-component/Switch';
-import { timestamp2string, renderQuota, copy } from 'utils/common';
+import Label from 'ui-component/Label'
+import TableSwitch from 'ui-component/Switch'
+import ConfirmDialog from 'ui-component/confirm-dialog'
+import { copy, renderQuota, timestamp2string } from 'utils/common'
 
-import { Icon } from '@iconify/react';
-import { useTranslation } from 'react-i18next';
+import { Icon } from '@iconify/react'
+import { useTranslation } from 'react-i18next'
 
 export default function RedemptionTableRow({ item, manageRedemption, handleOpenModal, setModalRedemptionId }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(null);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [statusSwitch, setStatusSwitch] = useState(item.status);
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(null)
+  const [openDelete, setOpenDelete] = useState(false)
+  const [statusSwitch, setStatusSwitch] = useState(item.status)
 
   const handleDeleteOpen = () => {
-    handleCloseMenu();
-    setOpenDelete(true);
-  };
+    handleCloseMenu()
+    setOpenDelete(true)
+  }
 
   const handleDeleteClose = () => {
-    setOpenDelete(false);
-  };
+    setOpenDelete(false)
+  }
 
   const handleOpenMenu = (event) => {
-    setOpen(event.currentTarget);
-  };
+    setOpen(event.currentTarget)
+  }
 
   const handleCloseMenu = () => {
-    setOpen(null);
-  };
+    setOpen(null)
+  }
 
-  const handleStatus = async () => {
-    const switchVlue = statusSwitch === 1 ? 2 : 1;
-    const { success } = await manageRedemption(item.id, 'status', switchVlue);
+  const handleStatus = async() => {
+    const switchVlue = statusSwitch === 1 ? 2 : 1
+    const { success } = await manageRedemption(item.id, 'status', switchVlue)
     if (success) {
-      setStatusSwitch(switchVlue);
+      setStatusSwitch(switchVlue)
     }
-  };
+  }
 
-  const handleDelete = async () => {
-    handleCloseMenu();
-    await manageRedemption(item.id, 'delete', '');
-  };
+  const handleDelete = async() => {
+    handleCloseMenu()
+    await manageRedemption(item.id, 'delete', '')
+  }
 
   return (
     <>
@@ -72,7 +60,7 @@ export default function RedemptionTableRow({ item, manageRedemption, handleOpenM
               {item.status === 3 ? t('analytics_index.used') : t('common.unknown')}
             </Label>
           ) : (
-            <TableSwitch id={`switch-${item.id}`} checked={statusSwitch === 1} onChange={handleStatus} />
+            <TableSwitch id={`switch-${item.id}`} checked={statusSwitch === 1} onChange={handleStatus}/>
           )}
         </TableCell>
 
@@ -86,13 +74,13 @@ export default function RedemptionTableRow({ item, manageRedemption, handleOpenM
               color="primary"
               size="small"
               onClick={() => {
-                copy(item.key, t('topupCard.inputLabel'));
+                copy(item.key, t('topupCard.inputLabel'))
               }}
             >
               {t('token_index.copy')}
             </Button>
             <IconButton onClick={handleOpenMenu} sx={{ color: 'rgb(99, 115, 129)' }}>
-              <Icon icon="solar:menu-dots-circle-bold-duotone" />
+              <Icon icon="solar:menu-dots-circle-bold-duotone"/>
             </IconButton>
           </Stack>
         </TableCell>
@@ -111,36 +99,37 @@ export default function RedemptionTableRow({ item, manageRedemption, handleOpenM
         <MenuItem
           disabled={item.status !== 1 && item.status !== 2}
           onClick={() => {
-            handleCloseMenu();
-            handleOpenModal();
-            setModalRedemptionId(item.id);
+            handleCloseMenu()
+            handleOpenModal()
+            setModalRedemptionId(item.id)
           }}
         >
-          <Icon icon="solar:pen-bold-duotone" style={{ marginRight: '16px' }} />
+          <Icon icon="solar:pen-bold-duotone" style={{ marginRight: '16px' }}/>
           {t('common.edit')}
         </MenuItem>
         <MenuItem onClick={handleDeleteOpen} sx={{ color: 'error.main' }}>
-          <Icon icon="solar:trash-bin-trash-bold-duotone" style={{ marginRight: '16px' }} />
+          <Icon icon="solar:trash-bin-trash-bold-duotone" style={{ marginRight: '16px' }}/>
           {t('common.delete')}
         </MenuItem>
       </Popover>
 
-      <Dialog open={openDelete} onClose={handleDeleteClose}>
-        <DialogTitle>{t('redemptionPage.del')}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t('redemptionPage.delTip')} {item.name}？
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>{t('common.close')}</Button>
-          <Button onClick={handleDelete} sx={{ color: 'error.main' }} autoFocus>
+      <ConfirmDialog
+        open={openDelete}
+        onClose={handleDeleteClose}
+        title={t('common.delete')}
+        content={t('common.deleteConfirm', { title: `兑换码 "${item.name}"` })}
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+          >
             {t('common.delete')}
           </Button>
-        </DialogActions>
-      </Dialog>
+        }
+      />
     </>
-  );
+  )
 }
 
 RedemptionTableRow.propTypes = {
@@ -148,4 +137,4 @@ RedemptionTableRow.propTypes = {
   manageRedemption: PropTypes.func,
   handleOpenModal: PropTypes.func,
   setModalRedemptionId: PropTypes.func
-};
+}

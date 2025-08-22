@@ -1,13 +1,13 @@
-import { Avatar, Box, ButtonBase } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { Avatar, Box, ButtonBase } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 
-import { Icon } from '@iconify/react';
+import { Icon } from '@iconify/react'
 
-import { useNotice } from './NoticeContext';
+import { useNotice } from './NoticeContext'
 
 export function NoticeButton() {
-  const theme = useTheme();
-  const { openNotice } = useNotice();
+  const theme = useTheme()
+  const { openNotice } = useNotice()
 
   return (
     <Box
@@ -19,7 +19,7 @@ export function NoticeButton() {
         }
       }}
     >
-      <ButtonBase sx={{ borderRadius: '12px'}}>
+      <ButtonBase sx={{ borderRadius: '12px' }}>
         <Avatar
           variant="rounded"
           sx={{
@@ -41,9 +41,9 @@ export function NoticeButton() {
           onClick={openNotice}
           color="inherit"
         >
-          <Icon icon="lets-icons:message-duotone" width="1.6rem" />
+          <Icon icon="solar:bell-bold-duotone" width="1.5rem"/>
         </Avatar>
       </ButtonBase>
     </Box>
-  );
+  )
 }

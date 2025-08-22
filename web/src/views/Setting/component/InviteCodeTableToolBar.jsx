@@ -1,52 +1,25 @@
 import PropTypes from 'prop-types'
-import { useState } from 'react'
-import {
-  FormControl,
-  IconButton,
-  InputAdornment,
-  InputLabel,
-  MenuItem,
-  OutlinedInput,
-  Select,
-  Stack
-} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { Icon } from '@iconify/react'
+import { FormControl, InputAdornment, InputLabel, MenuItem, OutlinedInput, Select, Stack } from '@mui/material'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 
-// 常量定义 - 与主组件保持一致
-const STATUS_OPTIONS = {
-  ALL: 0,
-  ENABLED: 1,
-  DISABLED: 2
-}
+// 设置dayjs为中文
+dayjs.locale('zh-cn')
 
-export default function InviteCodeTableToolBar({
-  filterName,
-  handleFilterName,
-  onSearch,
-  onSearchClick
-}) {
-  const [keyword, setKeyword] = useState('')
+export default function InviteCodeTableToolBar({ filterName, handleFilterName, onSearch }) {
+  const theme = useTheme()
+  const grey500 = theme.palette.grey[500]
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    onSearch(keyword)
-    if (onSearchClick) {
-      onSearchClick()
-    }
-  }
-
-  const handleKeywordChange = (event) => {
-    setKeyword(event.target.value)
-  }
-
-  const handleKeyPress = (event) => {
-    if (event.key === 'Enter') {
-      handleSubmit(event)
+  // 处理回车键搜索
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && onSearch) {
+      event.preventDefault()
+      onSearch()
     }
   }
 
@@ -56,38 +29,48 @@ export default function InviteCodeTableToolBar({
         direction={{ xs: 'column', sm: 'row' }}
         spacing={{ xs: 3, sm: 2, md: 4 }}
         padding={'24px'}
+        paddingBottom={'0px'}
         sx={{ width: '100%', '& > *': { flex: 1 } }}
       >
         <FormControl>
+          <InputLabel htmlFor="invite-keyword-label">邀请码/名称</InputLabel>
           <OutlinedInput
-            value={keyword}
-            onChange={handleKeywordChange}
-            onKeyPress={handleKeyPress}
-            placeholder="搜索邀请码、名称"
+            id="keyword"
+            name="keyword"
+            sx={{
+              minWidth: '100%'
+            }}
+            label="邀请码/名称"
+            value={filterName.keyword}
+            onChange={handleFilterName}
+            onKeyDown={handleKeyDown}
+            placeholder="邀请码/名称"
             startAdornment={
               <InputAdornment position="start">
-                <Icon icon="solar:magnifer-line-duotone"/>
-              </InputAdornment>
-            }
-            endAdornment={
-              <InputAdornment position="end">
-                <IconButton onClick={handleSubmit} edge="end">
-                  <Icon icon="solar:arrow-right-line-duotone"/>
-                </IconButton>
+                <Icon icon="solar:ticket-bold-duotone" width={20} height={20} color={grey500}/>
               </InputAdornment>
             }
           />
         </FormControl>
+      </Stack>
 
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={{ xs: 3, sm: 2, md: 4 }}
+        padding={'24px'}
+        sx={{ width: '100%', '& > *': { flex: 1 } }}
+      >
         <FormControl>
-          <InputLabel htmlFor="status-label">状态</InputLabel>
+          <InputLabel htmlFor="invite-status-label">状态</InputLabel>
           <Select
-            id="status-label"
+            id="invite-status-label"
             label="状态"
-            value={filterName.status || STATUS_OPTIONS.ALL}
+            value={filterName.status}
             name="status"
             onChange={handleFilterName}
-            sx={{ minWidth: '100%' }}
+            sx={{
+              minWidth: '100%'
+            }}
             MenuProps={{
               PaperProps: {
                 style: {
@@ -96,17 +79,16 @@ export default function InviteCodeTableToolBar({
               }
             }}
           >
-            <MenuItem value={STATUS_OPTIONS.ALL}>全部</MenuItem>
-            <MenuItem value={STATUS_OPTIONS.ENABLED}>启用</MenuItem>
-            <MenuItem value={STATUS_OPTIONS.DISABLED}>禁用</MenuItem>
+            <MenuItem key={0} value={0}>全部</MenuItem>
+            <MenuItem key={1} value={1}>启用</MenuItem>
+            <MenuItem key={2} value={2}>禁用</MenuItem>
           </Select>
         </FormControl>
 
-        <FormControl>
-          <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={'zh-cn'}>
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
+          <FormControl>
             <DateTimePicker
-              label="生效开始时间"
-              ampm={false}
+              label="生效时间起"
               name="starts_at_from"
               value={filterName.starts_at_from === 0 ? null : dayjs.unix(filterName.starts_at_from)}
               onChange={(value) => {
@@ -115,7 +97,6 @@ export default function InviteCodeTableToolBar({
                   return
                 }
                 const timestamp = value.unix()
-                // 如果结束时间已设置且小于开始时间，则清空结束时间
                 if (filterName.starts_at_to > 0 && timestamp > filterName.starts_at_to) {
                   handleFilterName({ target: { name: 'starts_at_to', value: 0 } })
                 }
@@ -124,22 +105,21 @@ export default function InviteCodeTableToolBar({
               slotProps={{
                 textField: {
                   fullWidth: true,
-                  onKeyPress: (e) => e.preventDefault() // 禁用回车
+                  variant: 'outlined'
                 },
                 actionBar: {
                   actions: ['clear', 'today', 'accept']
                 }
               }}
             />
-          </LocalizationProvider>
-        </FormControl>
+          </FormControl>
+        </LocalizationProvider>
 
-        <FormControl>
-          <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={'zh-cn'}>
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
+          <FormControl>
             <DateTimePicker
-              label="生效结束时间"
+              label="生效时间止"
               name="starts_at_to"
-              ampm={false}
               value={filterName.starts_at_to === 0 ? null : dayjs.unix(filterName.starts_at_to)}
               onChange={(value) => {
                 if (value === null) {
@@ -147,9 +127,8 @@ export default function InviteCodeTableToolBar({
                   return
                 }
                 const timestamp = value.unix()
-                // 验证结束时间必须大于开始时间
                 if (filterName.starts_at_from > 0 && timestamp <= filterName.starts_at_from) {
-                  return // 不允许设置小于等于开始时间的结束时间
+                  return
                 }
                 handleFilterName({ target: { name: 'starts_at_to', value: timestamp } })
               }}
@@ -157,15 +136,15 @@ export default function InviteCodeTableToolBar({
               slotProps={{
                 textField: {
                   fullWidth: true,
-                  onKeyPress: (e) => e.preventDefault() // 禁用回车
+                  variant: 'outlined'
                 },
                 actionBar: {
                   actions: ['clear', 'today', 'accept']
                 }
               }}
             />
-          </LocalizationProvider>
-        </FormControl>
+          </FormControl>
+        </LocalizationProvider>
       </Stack>
     </>
   )
@@ -174,6 +153,5 @@ export default function InviteCodeTableToolBar({
 InviteCodeTableToolBar.propTypes = {
   filterName: PropTypes.object,
   handleFilterName: PropTypes.func,
-  onSearch: PropTypes.func,
-  onSearchClick: PropTypes.func
+  onSearch: PropTypes.func
 }

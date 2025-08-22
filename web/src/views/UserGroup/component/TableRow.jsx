@@ -1,60 +1,49 @@
-import PropTypes from 'prop-types';
-import { useState } from 'react';
+import PropTypes from 'prop-types'
+import { useState } from 'react'
 
-import {
-  Popover,
-  TableRow,
-  MenuItem,
-  TableCell,
-  IconButton,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Button
-} from '@mui/material';
+import { Button, IconButton, MenuItem, Popover, TableCell, TableRow } from '@mui/material'
 
-import Label from 'ui-component/Label';
-import TableSwitch from 'ui-component/Switch';
-import { useTranslation } from 'react-i18next';
-import { Icon } from '@iconify/react';
+import Label from 'ui-component/Label'
+import TableSwitch from 'ui-component/Switch'
+import ConfirmDialog from 'ui-component/confirm-dialog'
+import { useTranslation } from 'react-i18next'
+import { Icon } from '@iconify/react'
 
 export default function UserGroupTableRow({ item, manageUserGroup, handleOpenModal, setModalUserGroupId }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(null);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [statusSwitch, setStatusSwitch] = useState(item.enable);
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(null)
+  const [openDelete, setOpenDelete] = useState(false)
+  const [statusSwitch, setStatusSwitch] = useState(item.enable)
 
   const handleDeleteOpen = () => {
-    handleCloseMenu();
-    setOpenDelete(true);
-  };
+    handleCloseMenu()
+    setOpenDelete(true)
+  }
 
   const handleDeleteClose = () => {
-    setOpenDelete(false);
-  };
+    setOpenDelete(false)
+  }
 
   const handleOpenMenu = (event) => {
-    setOpen(event.currentTarget);
-  };
+    setOpen(event.currentTarget)
+  }
 
   const handleCloseMenu = () => {
-    setOpen(null);
-  };
+    setOpen(null)
+  }
 
-  const handleStatus = async () => {
-    const switchVlue = !statusSwitch;
-    const { success } = await manageUserGroup(item.id, 'status');
+  const handleStatus = async() => {
+    const switchVlue = !statusSwitch
+    const { success } = await manageUserGroup(item.id, 'status')
     if (success) {
-      setStatusSwitch(switchVlue);
+      setStatusSwitch(switchVlue)
     }
-  };
+  }
 
-  const handleDelete = async () => {
-    handleCloseMenu();
-    await manageUserGroup(item.id, 'delete');
-  };
+  const handleDelete = async() => {
+    handleCloseMenu()
+    await manageUserGroup(item.id, 'delete')
+  }
 
   return (
     <>
@@ -79,11 +68,11 @@ export default function UserGroupTableRow({ item, manageUserGroup, handleOpenMod
         <TableCell>{item.max}</TableCell>
         <TableCell>
           {' '}
-          <TableSwitch id={`switch-${item.id}`} checked={statusSwitch} onChange={handleStatus} />
+          <TableSwitch id={`switch-${item.id}`} checked={statusSwitch} onChange={handleStatus}/>
         </TableCell>
         <TableCell>
           <IconButton onClick={handleOpenMenu} sx={{ color: 'rgb(99, 115, 129)' }}>
-            <Icon icon="solar:menu-dots-circle-bold-duotone" />
+            <Icon icon="solar:menu-dots-circle-bold-duotone"/>
           </IconButton>
         </TableCell>
       </TableRow>
@@ -100,34 +89,37 @@ export default function UserGroupTableRow({ item, manageUserGroup, handleOpenMod
       >
         <MenuItem
           onClick={() => {
-            handleCloseMenu();
-            handleOpenModal();
-            setModalUserGroupId(item.id);
+            handleCloseMenu()
+            handleOpenModal()
+            setModalUserGroupId(item.id)
           }}
         >
-          <Icon icon="solar:pen-bold-duotone" style={{ marginRight: '16px' }} />
+          <Icon icon="solar:pen-bold-duotone" style={{ marginRight: '16px' }}/>
           {t('common.edit')}
         </MenuItem>
         <MenuItem onClick={handleDeleteOpen} sx={{ color: 'error.main' }}>
-          <Icon icon="solar:trash-bin-trash-bold-duotone" style={{ marginRight: '16px' }} />
+          <Icon icon="solar:trash-bin-trash-bold-duotone" style={{ marginRight: '16px' }}/>
           {t('common.delete')}
         </MenuItem>
       </Popover>
 
-      <Dialog open={openDelete} onClose={handleDeleteClose}>
-        <DialogTitle>{t('common.delete')}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>{t('common.deleteConfirm', { title: item.name })}</DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>{t('common.close')}</Button>
-          <Button onClick={handleDelete} sx={{ color: 'error.main' }} autoFocus>
+      <ConfirmDialog
+        open={openDelete}
+        onClose={handleDeleteClose}
+        title={t('common.delete')}
+        content={t('common.deleteConfirm', { title: item.name })}
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+          >
             {t('common.delete')}
           </Button>
-        </DialogActions>
-      </Dialog>
+        }
+      />
     </>
-  );
+  )
 }
 
 UserGroupTableRow.propTypes = {
@@ -135,4 +127,4 @@ UserGroupTableRow.propTypes = {
   manageUserGroup: PropTypes.func,
   handleOpenModal: PropTypes.func,
   setModalUserGroupId: PropTypes.func
-};
+}

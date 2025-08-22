@@ -1,10 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
+import { showError, showSuccess } from 'utils/common'
+import AdminContainer from 'ui-component/AdminContainer'
+
+import { useTheme } from '@mui/material/styles'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableContainer from '@mui/material/TableContainer'
+import TablePagination from '@mui/material/TablePagination'
+import LinearProgress from '@mui/material/LinearProgress'
+import ButtonGroup from '@mui/material/ButtonGroup'
+import Toolbar from '@mui/material/Toolbar'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import Alert from '@mui/material/Alert'
+
 import {
   Box,
   Button,
-  ButtonGroup,
   Card,
   Checkbox,
+  Container,
   Dialog,
   DialogActions,
   DialogContent,
@@ -14,35 +28,26 @@ import {
   FormControlLabel,
   IconButton,
   InputLabel,
-  LinearProgress,
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableContainer,
-  TablePagination,
   TextField,
-  Toolbar,
-  Typography,
-  useMediaQuery
+  Typography
 } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
-import { Icon } from '@iconify/react'
+import InviteCodeTableRow from './InviteCodeTableRow'
+import KeywordTableHead from 'ui-component/TableHead'
+import InviteCodeTableToolBar from './InviteCodeTableToolBar'
+import ConfirmDialog from 'ui-component/confirm-dialog'
+import { API } from 'utils/api'
+import { useTranslation } from 'react-i18next'
+import { getPageSize, PAGE_SIZE_OPTIONS, savePageSize } from 'constants'
+
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
-import KeywordTableHead from 'ui-component/TableHead'
-import InviteCodeTableToolBar from './InviteCodeTableToolBar'
-import PerfectScrollbar from 'react-perfect-scrollbar'
-import InviteCodeTableRow from './InviteCodeTableRow'
-import ConfirmDialog from 'ui-component/confirm-dialog'
-import { showError, showSuccess, trims } from 'utils/common'
-import { API } from 'utils/api'
-import { useTranslation } from 'react-i18next'
-import { getPageSize, PAGE_SIZE_OPTIONS, savePageSize } from 'constants'
+import { Icon } from '@iconify/react'
 
 // 常量定义 - 与后端保持一致
 const INVITE_CODE_CONFIG = {
@@ -77,12 +82,17 @@ const InviteCodeSetting = () => {
   const [rowsPerPage, setRowsPerPage] = useState(() => getPageSize('inviteCode'))
   const [listCount, setListCount] = useState(0)
   const [searching, setSearching] = useState(false)
-  const [searchKeyword, setSearchKeyword] = useState('')
-  const [filterName, setFilterName] = useState({
+
+  // 邀请码页面的状态管理（包含时间筛选）
+  const originalKeyword = {
+    keyword: '',
     status: 0,
     starts_at_from: 0,
     starts_at_to: 0
-  })
+  }
+  const [toolBarValue, setToolBarValue] = useState(originalKeyword)
+  const [searchKeyword, setSearchKeyword] = useState(originalKeyword)
+
   const [inviteCodes, setInviteCodes] = useState([])
   const [refreshFlag, setRefreshFlag] = useState(false)
 
@@ -99,10 +109,11 @@ const InviteCodeSetting = () => {
   const [openDialog, setOpenDialog] = useState(false)
   const [editingCode, setEditingCode] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    max_uses: 0, // 默认无限使用
+    max_uses: 0, // 默认无限制使用
     starts_at: null,
     expires_at: null,
     count: 1,
@@ -130,26 +141,47 @@ const InviteCodeSetting = () => {
     savePageSize('inviteCode', newRowsPerPage)
   }
 
-  // 搜索处理
-  const handleSearch = (keyword) => {
+  // 完全按照渠道页面的逻辑
+  const handleToolBarValue = (event) => {
+    setToolBarValue({ ...toolBarValue, [event.target.name]: event.target.value })
+  }
+
+  // 完全按照渠道页面的搜索逻辑
+  const searchInviteCodes = async() => {
+    // 如果正在搜索中，防止重复提交
+    if (searching) {
+      return
+    }
+
     setPage(0)
-    setSearchKeyword(keyword)
+    // 使用时间戳来确保即使搜索条件相同也能触发重新搜索
+    const searchPayload = {
+      ...toolBarValue,
+      _timestamp: Date.now()
+    }
+    setSearchKeyword(searchPayload)
   }
 
-  // 过滤条件处理
-  const handleFilterName = (event) => {
-    const { name, value } = event.target
-    setFilterName(prev => ({
-      ...prev,
-      [name]: value
-    }))
-    // 移除即时查询，只更新状态不触发搜索
+  // 完全按照渠道页面的刷新逻辑
+  const handleRefresh = async(reset) => {
+    if (reset) {
+      setOrderBy('id')
+      setOrder('desc')
+      setToolBarValue(originalKeyword)
+      setSearchKeyword(originalKeyword)
+    }
+    setRefreshFlag(!refreshFlag)
   }
 
-  // 数据获取
-  const fetchData = useCallback(async(page, rowsPerPage, keyword, order, orderBy, filters) => {
+  // 完全按照渠道页面的数据获取逻辑
+  const fetchData = useCallback(async(page, rowsPerPage, keyword, order, orderBy) => {
     setSearching(true)
-    keyword = trims(keyword)
+
+    // 移除仅用于触发状态更新的时间戳字段
+    if (keyword._timestamp) {
+      delete keyword._timestamp
+    }
+
     try {
       if (orderBy) {
         orderBy = order === 'desc' ? '-' + orderBy : orderBy
@@ -158,19 +190,8 @@ const InviteCodeSetting = () => {
       const params = {
         page: page + 1,
         size: rowsPerPage,
-        keyword: keyword,
-        order: orderBy
-      }
-
-      // 添加过滤条件
-      if (filters.status && filters.status !== 0) {
-        params.status = filters.status
-      }
-      if (filters.starts_at_from && filters.starts_at_from !== 0) {
-        params.starts_at_from = filters.starts_at_from
-      }
-      if (filters.starts_at_to && filters.starts_at_to !== 0) {
-        params.starts_at_to = filters.starts_at_to
+        order: orderBy,
+        ...keyword  // 完全按照渠道页面的方式传递所有参数
       }
 
       const res = await API.get(INVITE_CODE_CONFIG.API_ENDPOINTS.LIST, { params })
@@ -187,11 +208,6 @@ const InviteCodeSetting = () => {
     }
     setSearching(false)
   }, [])
-
-  // 搜索处理
-  const handleSearchClick = async() => {
-    setRefreshFlag(!refreshFlag)
-  }
 
   // 多选处理
   const handleSelectAll = () => {
@@ -241,7 +257,7 @@ const InviteCodeSetting = () => {
       if (success) {
         showSuccess(`成功删除 ${selectedCodes.length} 个邀请码`)
         setSelectedCodes([])
-        handleSearchClick()
+        handleRefresh(false)
       } else {
         showError(message || '批量删除失败')
       }
@@ -278,14 +294,15 @@ const InviteCodeSetting = () => {
       if (newValue) {
         const now = Math.floor(Date.now() / 1000)
         const hasValidCodes = Array.isArray(inviteCodes) && inviteCodes.some(code =>
-          code.status === INVITE_CODE_CONFIG.STATUS.ENABLED &&
-          (code.max_uses === 0 || code.used_count < code.max_uses) &&
-          (code.starts_at === 0 || code.starts_at <= now) &&
-          (code.expires_at === 0 || code.expires_at > now)
+            code.status === INVITE_CODE_CONFIG.STATUS.ENABLED &&
+            (code.max_uses === 0 || code.used_count < code.max_uses)
+          // &&
+          // (code.starts_at === 0 || code.starts_at <= now) &&
+          // (code.expires_at === 0 || code.expires_at > now)
         )
 
         if (!hasValidCodes) {
-          showError('当前没有有效的邀请码，请先创建邀请码后再开启邀请码注册')
+          showError('当前没有启用的邀请码，请先启用邀请码后再开启邀请码注册')
           setSettingLoading(false)
           return
         }
@@ -345,6 +362,9 @@ const InviteCodeSetting = () => {
 
   // 生成随机邀请码
   const generateRandomCode = async() => {
+    if (generating) return
+
+    setGenerating(true)
     try {
       const res = await API.get(INVITE_CODE_CONFIG.API_ENDPOINTS.GENERATE)
       const { success, data, message } = res.data
@@ -355,6 +375,8 @@ const InviteCodeSetting = () => {
       }
     } catch (error) {
       showError('生成邀请码失败')
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -366,13 +388,23 @@ const InviteCodeSetting = () => {
       return false
     }
 
-    // 邀请码长度验证
-    if (formData.code && (formData.code.length < 4 || formData.code.length > 32)) {
-      showError('邀请码长度必须在4-32个字符之间')
+    // 邀请码格式验证
+    if (formData.code && formData.code.trim() !== formData.code) {
+      showError('邀请码不能包含前后空格')
+      return false
+    }
+    if (formData.code && !/^[a-zA-Z0-9_-]+$/.test(formData.code)) {
+      showError('邀请码只能包含字母、数字、下划线和短横线')
       return false
     }
 
-    // 使用次数验证（0表示无限使用）
+    // 邀请码长度验证
+    if (formData.code && (formData.code.length < 3 || formData.code.length > 32)) {
+      showError('邀请码长度必须在3-32个字符之间')
+      return false
+    }
+
+    // 使用次数验证（0表示无限制使用）
     if (formData.max_uses < 0) {
       showError('最大使用次数不能小于0')
       return false
@@ -385,7 +417,7 @@ const InviteCodeSetting = () => {
     }
 
     // 时间验证
-    if (formData.starts_at && formData.expires_at && formData.starts_at.isAfter(formData.expires_at)) {
+    if (formData.starts_at && formData.expires_at && formData.starts_at.isSameOrAfter(formData.expires_at)) {
       showError('生效结束时间必须大于开始时间')
       return false
     }
@@ -402,24 +434,32 @@ const InviteCodeSetting = () => {
 
     setSubmitting(true)
     try {
-      const submitData = {
-        ...formData,
-        starts_at: formData.starts_at ? Math.floor(formData.starts_at.valueOf() / 1000) : 0,
-        expires_at: formData.expires_at ? Math.floor(formData.expires_at.valueOf() / 1000) : 0
-      }
-
       let res
       if (editingCode) {
-        res = await API.put(`/api/invite-code/${editingCode.id}`, submitData)
+        // 更新时不传code字段，因为邀请码不可修改
+        const updateData = {
+          name: formData.name,
+          max_uses: formData.max_uses,
+          status: formData.status,
+          starts_at: formData.starts_at ? Math.floor(formData.starts_at.valueOf() / 1000) : 0,
+          expires_at: formData.expires_at ? Math.floor(formData.expires_at.valueOf() / 1000) : 0
+        }
+        res = await API.put(`/api/invite-code/${editingCode.id}`, updateData)
       } else {
-        res = await API.post('/api/invite-code/', submitData)
+        // 创建时传所有字段
+        const createData = {
+          ...formData,
+          starts_at: formData.starts_at ? Math.floor(formData.starts_at.valueOf() / 1000) : 0,
+          expires_at: formData.expires_at ? Math.floor(formData.expires_at.valueOf() / 1000) : 0
+        }
+        res = await API.post('/api/invite-code/', createData)
       }
 
       const { success, message } = res.data
       if (success) {
         showSuccess(editingCode ? '邀请码更新成功' : '邀请码创建成功')
         handleCloseDialog()
-        handleSearchClick()
+        handleRefresh(false)
       } else {
         showError(message || '操作失败')
       }
@@ -436,131 +476,110 @@ const InviteCodeSetting = () => {
   }, [])
 
   useEffect(() => {
-    fetchData(page, rowsPerPage, searchKeyword, order, orderBy, filterName)
+    fetchData(page, rowsPerPage, searchKeyword, order, orderBy)
   }, [page, rowsPerPage, searchKeyword, order, orderBy, refreshFlag, fetchData])
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
-      <Box>
-        {/* 邀请码注册设置 */}
-        <Card sx={{ mb: 3 }}>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              邀请码注册设置
-            </Typography>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={inviteCodeRegisterEnabled}
-                  onChange={toggleInviteCodeRegister}
-                  disabled={settingLoading}
-                />
-              }
-              label="启用邀请码注册"
-            />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              启用后，用户注册时需要提供有效的邀请码
-            </Typography>
-          </Box>
-        </Card>
+    <AdminContainer>
+      <Container maxWidth={false}>
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="zh-cn">
+          {/* 邀请码注册设置 */}
+          <Card sx={{ mb: 3 }}>
+            <Box sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                邀请码注册设置
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={inviteCodeRegisterEnabled}
+                    onChange={toggleInviteCodeRegister}
+                    disabled={settingLoading}
+                  />
+                }
+                label="启用邀请码注册"
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                启用后，用户注册时需要提供有效的邀请码
+              </Typography>
+            </Box>
+          </Card>
 
-        {/* 邀请码设置 */}
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-          <Typography variant="h4">
-            邀请码设置
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Icon icon="solar:add-circle-line-duotone"/>}
-            onClick={() => handleOpenDialog()}
-          >
-            创建邀请码
-          </Button>
-        </Stack>
-
-        <Card>
-          <InviteCodeTableToolBar
-            filterName={filterName}
-            handleFilterName={handleFilterName}
-            onSearch={handleSearch}
-            onSearchClick={handleSearchClick}
-          />
-
-          <Toolbar
-            sx={{
-              textAlign: 'right',
-              height: 50,
-              display: 'flex',
-              justifyContent: 'space-between',
-              p: (theme) => theme.spacing(0, 1, 0, 3),
-              minWidth: 0
-            }}
-          >
-            {/* 左侧批量删除按钮 */}
-            {matchUpMd && (
+          {/* 邀请码设置 */}
+          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Typography variant="h4">
+                邀请码设置
+              </Typography>
+            </Stack>
+            <ButtonGroup variant="contained" aria-label="outlined small primary button group">
               <Button
-                variant="outlined"
-                onClick={handleBatchDelete}
-                disabled={selectedCodes.length === 0}
-                startIcon={<Icon icon="solar:trash-bin-trash-bold-duotone" width={18}/>}
-                color="error"
-                sx={{
-                  minWidth: 'auto',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0
-                }}
+                color="primary"
+                startIcon={<Icon icon="solar:add-circle-line-duotone"/>}
+                onClick={() => handleOpenDialog()}
               >
-                批量删除 ({selectedCodes.length})
+                创建邀请码
               </Button>
-            )}
+            </ButtonGroup>
+          </Stack>
 
-            <Box sx={{ flex: 1, overflow: 'hidden', minWidth: 0, display: 'flex', justifyContent: 'flex-end', ml: 2 }}>
-              {matchUpMd ? (
-                <Box sx={{
-                  overflow: 'auto',
-                  maxWidth: '100%',
-                  scrollBehavior: 'smooth',
-                  '&::-webkit-scrollbar': {
-                    height: '4px'
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    backgroundColor: 'rgba(0,0,0,0.2)',
-                    borderRadius: '2px'
-                  }
-                }}>
-                  <ButtonGroup
-                    variant="outlined"
-                    aria-label="outlined small primary button group"
-                    sx={{
-                      flexWrap: 'nowrap',
-                      minWidth: 'max-content',
-                      display: 'flex'
-                    }}
-                  >
-                    <Button
-                      onClick={handleSearchClick}
-                      startIcon={<Icon icon="solar:magnifer-bold-duotone" width={18}/>}
-                      sx={{
-                        whiteSpace: 'nowrap',
-                        minWidth: 'auto',
-                        px: 1.5
-                      }}
-                    >
-                      搜索
-                    </Button>
-                  </ButtonGroup>
-                </Box>
-              ) : (
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  divider={<Divider orientation="vertical" flexItem/>}
-                  justifyContent="space-around"
-                  alignItems="center"
+          <Stack mb={5}>
+            <Alert severity="info">
+              邀请码用于控制用户注册，只有持有有效邀请码的用户才能注册账号
+              <br/>
+              邀请码可以设置使用次数限制和有效期限制
+              <br/>
+              邀请码状态：启用/禁用
+              <br/>
+              批量创建时将自动生成随机邀请码
+            </Alert>
+          </Stack>
+
+          <Card>
+            <Box component="form" noValidate>
+              <InviteCodeTableToolBar
+                filterName={toolBarValue}
+                handleFilterName={handleToolBarValue}
+                onSearch={searchInviteCodes}
+              />
+            </Box>
+
+            {/* 按钮工具栏 - 完全按照渠道页面 */}
+            <Toolbar
+              sx={{
+                textAlign: 'right',
+                height: 50,
+                display: 'flex',
+                justifyContent: 'space-between',
+                p: (theme) => theme.spacing(0, 1, 0, 3),
+                minWidth: 0
+              }}
+            >
+              {/* 左侧删除邀请码按钮 - 完全按照渠道页面 */}
+              {matchUpMd && (
+                <Button
+                  variant="outlined"
+                  onClick={handleBatchDelete}
+                  disabled={selectedCodes.length === 0}
+                  startIcon={<Icon icon="solar:trash-bin-2-bold-duotone" width={18}/>}
+                  color="error"
                   sx={{
+                    minWidth: 'auto',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  删除邀请码 ({selectedCodes.length})
+                </Button>
+              )}
+
+              <Box
+                sx={{ flex: 1, overflow: 'hidden', minWidth: 0, display: 'flex', justifyContent: 'flex-end', ml: 2 }}>
+                {matchUpMd ? (
+                  <Box sx={{
                     overflow: 'auto',
-                    minWidth: 'max-content',
+                    maxWidth: '100%',
+                    scrollBehavior: 'smooth',
                     '&::-webkit-scrollbar': {
                       height: '4px'
                     },
@@ -568,28 +587,116 @@ const InviteCodeSetting = () => {
                       backgroundColor: 'rgba(0,0,0,0.2)',
                       borderRadius: '2px'
                     }
-                  }}
-                >
-                  <IconButton onClick={handleSearchClick} color="primary">
-                    <Icon icon="solar:magnifer-bold-duotone" width={18}/>
-                  </IconButton>
-                  <IconButton
-                    onClick={handleBatchDelete}
-                    color="error"
-                    disabled={selectedCodes.length === 0}
+                  }}>
+                    <ButtonGroup
+                      variant="outlined"
+                      aria-label="outlined small primary button group"
+                      sx={{
+                        flexWrap: 'nowrap',
+                        minWidth: 'max-content',
+                        display: 'flex'
+                      }}
+                    >
+                      <Button
+                        onClick={() => handleRefresh(true)}
+                        startIcon={<Icon icon="solar:refresh-circle-bold-duotone" width={18}/>}
+                        sx={{
+                          whiteSpace: 'nowrap',
+                          minWidth: 'auto',
+                          px: 1.5
+                        }}
+                      >
+                        刷新/清除搜索条件
+                      </Button>
+                      <Button
+                        onClick={searchInviteCodes}
+                        startIcon={
+                          searching ? (
+                            <Icon
+                              icon="solar:refresh-bold-duotone"
+                              width={18}
+                              style={{
+                                animation: 'spin 1s linear infinite',
+                                color: '#1976d2'
+                              }}
+                            />
+                          ) : (
+                            <Icon icon="solar:magnifer-bold-duotone" width={18}/>
+                          )
+                        }
+                        sx={{
+                          whiteSpace: 'nowrap',
+                          minWidth: 'auto',
+                          px: 1.5,
+                          ...(searching && {
+                            bgcolor: 'action.hover',
+                            color: 'primary.main',
+                            '&:hover': {
+                              bgcolor: 'action.selected'
+                            }
+                          })
+                        }}
+                      >
+                        {searching ? '搜索中...' : '搜索'}
+                      </Button>
+                    </ButtonGroup>
+                  </Box>
+                ) : (
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    divider={<Divider orientation="vertical" flexItem/>}
+                    justifyContent="space-around"
+                    alignItems="center"
+                    sx={{
+                      overflow: 'auto',
+                      minWidth: 'max-content',
+                      '&::-webkit-scrollbar': {
+                        height: '4px'
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        backgroundColor: 'rgba(0,0,0,0.2)',
+                        borderRadius: '2px'
+                      }
+                    }}
                   >
-                    <Icon icon="solar:trash-bin-trash-bold-duotone" width={18}/>
-                  </IconButton>
-                </Stack>
-              )}
-            </Box>
-          </Toolbar>
-
-          {searching && <LinearProgress/>}
-
-          <PerfectScrollbar component="div">
-            <TableContainer sx={{ overflow: 'unset', minWidth: { xs: 'auto', sm: 800 } }}>
-              <Table sx={{ minWidth: { xs: 'auto', sm: 800 } }}>
+                    <IconButton onClick={() => handleRefresh(true)} size="large">
+                      <Icon width={20} icon="solar:refresh-circle-bold-duotone"/>
+                    </IconButton>
+                    <IconButton
+                      onClick={searchInviteCodes}
+                      size="large"
+                      sx={{
+                        ...(searching && {
+                          bgcolor: 'action.hover',
+                          color: 'primary.main'
+                        })
+                      }}
+                    >
+                      {searching ? (
+                        <Icon
+                          width={20}
+                          icon="solar:refresh-bold-duotone"
+                          style={{
+                            animation: 'spin 1s linear infinite',
+                            color: '#1976d2'
+                          }}
+                        />
+                      ) : (
+                        <Icon width={20} icon="solar:magnifer-bold-duotone"/>
+                      )}
+                    </IconButton>
+                    <IconButton onClick={handleBatchDelete} disabled={selectedCodes.length === 0} size="large"
+                                color="error">
+                      <Icon width={20} icon="solar:trash-bin-2-bold-duotone"/>
+                    </IconButton>
+                  </Stack>
+                )}
+              </Box>
+            </Toolbar>
+            {searching && <LinearProgress/>}
+            <TableContainer>
+              <Table sx={{ minWidth: 800 }}>
                 <KeywordTableHead
                   order={order}
                   orderBy={orderBy}
@@ -599,15 +706,15 @@ const InviteCodeSetting = () => {
                   onSelectAllClick={handleSelectAll}
                   headLabel={[
                     { id: 'select', label: '', disableSort: true, width: '50px' },
-                    { id: 'id', label: 'ID', disableSort: false },
-                    { id: 'code', label: '邀请码', disableSort: false },
-                    { id: 'name', label: '名称', disableSort: false },
-                    { id: 'usage', label: '使用情况', disableSort: true },
-                    { id: 'starts_at', label: '生效时间', disableSort: false },
-                    { id: 'expires_at', label: '过期时间', disableSort: false },
-                    { id: 'created_time', label: '创建时间', disableSort: false },
-                    { id: 'status', label: '状态', disableSort: false },
-                    { id: 'action', label: '操作', disableSort: true }
+                    { id: 'id', label: 'ID', disableSort: false, width: '80px' },
+                    { id: 'code', label: '邀请码', disableSort: false, width: '120px' },
+                    { id: 'name', label: '名称', disableSort: false, width: '150px' },
+                    { id: 'usage', label: '使用情况', disableSort: true, width: '100px' },
+                    { id: 'starts_at', label: '生效时间', disableSort: false, width: '120px' },
+                    { id: 'expires_at', label: '过期时间', disableSort: false, width: '120px' },
+                    { id: 'created_time', label: '创建时间', disableSort: false, width: '120px' },
+                    { id: 'status', label: '状态', disableSort: false, width: '80px' },
+                    { id: 'action', label: '操作', disableSort: true, width: '100px' }
                   ]}
                 />
                 <TableBody>
@@ -617,179 +724,210 @@ const InviteCodeSetting = () => {
                       item={row}
                       selected={selectedCodes.indexOf(row.id) !== -1}
                       onSelectRow={() => handleSelectOne(row.id)}
-                      onRefresh={handleSearchClick}
+                      onRefresh={() => handleRefresh(false)}
                       handleOpenModal={handleOpenDialog}
                     />
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-          </PerfectScrollbar>
 
-          <TablePagination
-            page={page}
-            component="div"
-            count={listCount}
-            rowsPerPage={rowsPerPage}
-            onPageChange={handleChangePage}
-            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            showFirstButton
-            showLastButton
-          />
-        </Card>
-
-        {/* 创建/编辑对话框 */}
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle
-            sx={{ margin: '0px', fontWeight: 700, lineHeight: '1.55556', padding: '24px', fontSize: '1.125rem' }}>
-            {editingCode ? '编辑邀请码' : '创建邀请码'}
-          </DialogTitle>
-          <Divider/>
-          <DialogContent>
-            <TextField
-              fullWidth
-              label="名称"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              margin="normal"
+            <TablePagination
+              page={page}
+              component="div"
+              count={listCount}
+              rowsPerPage={rowsPerPage}
+              onPageChange={handleChangePage}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              showFirstButton
+              showLastButton
             />
-            {!editingCode && (
+          </Card>
+
+          {/* 创建/编辑对话框 */}
+          <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+            <DialogTitle
+              sx={{ margin: '0px', fontWeight: 700, lineHeight: '1.55556', padding: '24px', fontSize: '1.125rem' }}>
+              {editingCode ? '编辑邀请码' : '创建邀请码'}
+            </DialogTitle>
+            <Divider/>
+            <DialogContent>
+              <TextField
+                fullWidth
+                label="名称"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                margin="normal"
+              />
               <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
                 <TextField
                   fullWidth
                   label="邀请码"
                   value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="留空自动生成或手动输入"
-                  disabled={formData.count > 1}
-                  helperText={formData.count > 1 ? '批量创建时将自动生成邀请码' : ''}
-                />
-                <IconButton
-                  onClick={generateRandomCode}
-                  disabled={formData.count > 1}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      backgroundColor: 'primary.light'
-                    }
+                  onChange={(e) => {
+                    const value = e.target.value
+                    // 实时过滤特殊字符
+                    const filteredValue = value.replace(/[^a-zA-Z0-9_-]/g, '')
+                    setFormData({ ...formData, code: filteredValue })
                   }}
-                >
-                  <Icon icon="solar:refresh-bold-duotone"/>
-                </IconButton>
+                  placeholder="留空自动生成或手动输入"
+                  disabled={formData.count > 1 || generating || editingCode}
+                  helperText={
+                    editingCode
+                      ? '编辑时邀请码不可修改'
+                      : formData.count > 1
+                        ? '批量创建时将自动生成邀请码'
+                        : '只能包含字母、数字、下划线和短横线'
+                  }
+                />
+                {!editingCode && (
+                  <IconButton
+                    onClick={generateRandomCode}
+                    disabled={formData.count > 1 || generating}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      width: 56,
+                      height: 56,
+                      flexShrink: 0,
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        backgroundColor: 'primary.light'
+                      },
+                      ...(generating && {
+                        bgcolor: 'action.hover',
+                        color: 'primary.main'
+                      })
+                    }}
+                  >
+                    <Icon
+                      icon="solar:refresh-bold-duotone"
+                      style={{
+                        ...(generating && {
+                          animation: 'spin 1s linear infinite'
+                        })
+                      }}
+                    />
+                  </IconButton>
+                )}
               </Box>
-            )}
-            <TextField
-              fullWidth
-              label="最大使用次数"
-              type="number"
-              value={formData.max_uses}
-              onChange={(e) => setFormData({ ...formData, max_uses: parseInt(e.target.value) || 0 })}
-              margin="normal"
-              inputProps={{ min: 0 }}
-              helperText="设置为 0 表示无限使用"
-            />
-            {!editingCode && (
               <TextField
                 fullWidth
-                label="批量创建数量"
+                label="最大使用次数"
                 type="number"
-                value={formData.count}
-                onChange={(e) => setFormData({ ...formData, count: parseInt(e.target.value) || 1 })}
+                value={formData.max_uses}
+                onChange={(e) => setFormData({ ...formData, max_uses: parseInt(e.target.value) || 0 })}
                 margin="normal"
-                inputProps={{ min: 1, max: 100 }}
-                helperText="一次最多创建100个邀请码"
+                inputProps={{ min: 0 }}
+                helperText="0为无限制使用"
               />
-            )}
-            <DateTimePicker
-              label="生效开始时间"
-              value={formData.starts_at}
-              onChange={(newValue) => {
-                // 如果结束时间已设置且小于新的开始时间，则清空结束时间
-                if (formData.expires_at && newValue && formData.expires_at.isBefore(newValue)) {
-                  setFormData({ ...formData, starts_at: newValue, expires_at: null })
-                } else {
-                  setFormData({ ...formData, starts_at: newValue })
-                }
-              }}
-              slotProps={{
-                textField: {
-                  fullWidth: true,
-                  margin: 'normal',
-                  helperText: '留空表示立即生效'
-                }
-              }}
-            />
-            <DateTimePicker
-              label="生效结束时间"
-              value={formData.expires_at}
-              onChange={(newValue) => {
-                // 验证结束时间必须大于开始时间
-                if (newValue && formData.starts_at && newValue.isBefore(formData.starts_at)) {
-                  return // 不允许设置小于开始时间的结束时间
-                }
-                setFormData({ ...formData, expires_at: newValue })
-              }}
-              slotProps={{
-                textField: {
-                  fullWidth: true,
-                  margin: 'normal',
-                  helperText: '留空表示永不过期'
-                }
-              }}
-              minDateTime={formData.starts_at || dayjs()}
-            />
-            {editingCode && (
-              <FormControl fullWidth margin="normal">
-                <InputLabel id="status-select-label">状态</InputLabel>
-                <Select
-                  labelId="status-select-label"
-                  label="状态"
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                >
-                  <MenuItem value={INVITE_CODE_CONFIG.STATUS.ENABLED}>启用</MenuItem>
-                  <MenuItem value={INVITE_CODE_CONFIG.STATUS.DISABLED}>禁用</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog} disabled={submitting}>取消</Button>
-            <Button
-              onClick={handleSubmit}
-              variant="contained"
-              disabled={submitting}
-              startIcon={submitting ? <Icon icon="solar:loading-line-duotone" className="animate-spin"/> : null}
-            >
-              {submitting ? '处理中...' : (editingCode ? '更新' : '创建')}
-            </Button>
-          </DialogActions>
-        </Dialog>
+              {!editingCode && (
+                <TextField
+                  fullWidth
+                  label="批量创建数量"
+                  type="number"
+                  value={formData.count}
+                  onChange={(e) => setFormData({ ...formData, count: parseInt(e.target.value) || 1 })}
+                  margin="normal"
+                  inputProps={{ min: 1, max: 100 }}
+                  helperText="一次最多创建100个邀请码"
+                />
+              )}
+              <DateTimePicker
+                label="生效开始时间"
+                value={formData.starts_at}
+                onChange={(newValue) => {
+                  // 如果结束时间已设置且小于新的开始时间，则清空结束时间
+                  if (formData.expires_at && newValue && formData.expires_at.isBefore(newValue)) {
+                    setFormData({ ...formData, starts_at: newValue, expires_at: null })
+                  } else {
+                    setFormData({ ...formData, starts_at: newValue })
+                  }
+                }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    margin: 'normal',
+                    helperText: '留空表示立即生效'
+                  },
+                  actionBar: {
+                    actions: ['clear', 'today', 'accept']
+                  }
+                }}
+              />
+              <DateTimePicker
+                label="生效结束时间"
+                value={formData.expires_at}
+                onChange={(newValue) => {
+                  // 验证结束时间必须大于开始时间
+                  if (newValue && formData.starts_at && newValue.isBefore(formData.starts_at)) {
+                    return // 不允许设置小于开始时间的结束时间
+                  }
+                  setFormData({ ...formData, expires_at: newValue })
+                }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    margin: 'normal',
+                    helperText: '留空表示永不过期'
+                  },
+                  actionBar: {
+                    actions: ['clear', 'today', 'accept']
+                  }
+                }}
+                minDateTime={formData.starts_at || dayjs()}
+              />
+              {editingCode && (
+                <FormControl fullWidth margin="normal">
+                  <InputLabel id="status-select-label">状态</InputLabel>
+                  <Select
+                    labelId="status-select-label"
+                    label="状态"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <MenuItem value={INVITE_CODE_CONFIG.STATUS.ENABLED}>启用</MenuItem>
+                    <MenuItem value={INVITE_CODE_CONFIG.STATUS.DISABLED}>禁用</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseDialog} disabled={submitting}>取消</Button>
+              <Button
+                onClick={handleSubmit}
+                variant="contained"
+                disabled={submitting}
+                startIcon={submitting ? <Icon icon="solar:loading-line-duotone" className="animate-spin"/> : null}
+              >
+                {submitting ? (editingCode ? '更新中...' : '创建中...') : (editingCode ? '更新' : '创建')}
+              </Button>
+            </DialogActions>
+          </Dialog>
 
-        {/* 批量删除确认对话框 */}
-        <ConfirmDialog
-          open={batchDeleteConfirm}
-          onClose={() => setBatchDeleteConfirm(false)}
-          title="批量删除邀请码"
-          content={`确定要删除选中的 ${selectedCodes.length} 个邀请码吗？此操作不可撤销。`}
-          action={
-            <Button
-              variant="contained"
-              color="error"
-              onClick={confirmBatchDelete}
-              disabled={batchDeleting}
-              startIcon={batchDeleting ? <Icon icon="solar:loading-line-duotone" className="animate-spin"/> : null}
-            >
-              {batchDeleting ? '删除中...' : '删除'}
-            </Button>
-          }
-        />
-      </Box>
-    </LocalizationProvider>
+          {/* 批量删除确认对话框 */}
+          <ConfirmDialog
+            open={batchDeleteConfirm}
+            onClose={() => setBatchDeleteConfirm(false)}
+            title={t('common.delete')}
+            content={t('common.deleteConfirm', { title: `选中的 ${selectedCodes.length} 个邀请码` })}
+            action={
+              <Button
+                variant="contained"
+                color="error"
+                onClick={confirmBatchDelete}
+                disabled={batchDeleting}
+                startIcon={batchDeleting ? <Icon icon="solar:loading-line-duotone" className="animate-spin"/> : null}
+              >
+                {batchDeleting ? '删除中...' : '删除'}
+              </Button>
+            }
+          />
+        </LocalizationProvider>
+      </Container>
+    </AdminContainer>
   )
 }
 

@@ -80,6 +80,26 @@ func RecordLog(userId int, logType int, content string) {
 	}
 }
 
+// RecordLogWithTx 在指定事务中记录日志
+func RecordLogWithTx(tx *gorm.DB, userId int, logType int, content string) {
+	if logType == LogTypeConsume && !config.LogConsumeEnabled {
+		return
+	}
+	username, _ := CacheGetUsername(userId)
+
+	log := &Log{
+		UserId:    userId,
+		Username:  username,
+		CreatedAt: utils.GetTimestamp(),
+		Type:      logType,
+		Content:   content,
+	}
+	err := tx.Create(log).Error
+	if err != nil {
+		logger.SysError("failed to record log with tx: " + err.Error())
+	}
+}
+
 func RecordConsumeLog(
 	ctx context.Context,
 	userId int,
