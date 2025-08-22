@@ -2,13 +2,7 @@ import PropTypes from 'prop-types'
 import { useState } from 'react'
 
 import {
-  Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -215,20 +209,21 @@ export default function UsersTableRow({ item, manageUser, handleOpenModal, setMo
         </MenuItem>
       </Popover>
 
-      <Dialog open={openDelete} onClose={handleDeleteClose}>
-        <DialogTitle>{t('userPage.del')}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t('userPage.delTip')} {item.name}？
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>{t('common.close')}</Button>
-          <Button onClick={handleDelete} sx={{ color: 'error.main' }} autoFocus>
+      <ConfirmDialog
+        open={openDelete}
+        onClose={handleDeleteClose}
+        title={t('common.delete')}
+        content={t('common.deleteConfirm', { title: `用户 "${item.username}"` })}
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+          >
             {t('common.delete')}
           </Button>
-        </DialogActions>
-      </Dialog>
+        }
+      />
 
       <ConfirmDialog
         open={openChangeQuota}

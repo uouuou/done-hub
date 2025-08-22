@@ -209,6 +209,17 @@ func RecordExists(table interface{}, fieldName string, fieldValue interface{}, e
 	return count > 0
 }
 
+// RecordExistsWithTx 在指定事务中检查记录是否存在
+func RecordExistsWithTx(tx *gorm.DB, table interface{}, fieldName string, fieldValue interface{}, excludeID interface{}) bool {
+	var count int64
+	query := tx.Model(table).Where(fmt.Sprintf("%s = ?", fieldName), fieldValue)
+	if excludeID != nil {
+		query = query.Not("id", excludeID)
+	}
+	query.Count(&count)
+	return count > 0
+}
+
 func GetFieldsByID(model interface{}, fieldNames []string, id int, result interface{}) error {
 	err := DB.Model(model).Where("id = ?", id).Select(fieldNames).Find(result).Error
 	return err

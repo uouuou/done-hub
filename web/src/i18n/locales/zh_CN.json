@@ -74,7 +74,9 @@
     "resendCode": "重新发送({{countdown}})",
     "getCode": "获取验证码",
     "verificationInfo": "请稍后几秒重试，Turnstile 正在检查用户环境！",
-    "restSendEmail": "重置邮件发送成功，请检查邮箱！"
+    "restSendEmail": "重置邮件发送成功，请检查邮箱！",
+    "registering": "注册中...",
+    "inviteCodeRequired": "邀请码是必填项"
   },
   "registerPage": {
     "alreadyHaveAccount": "已经有帐号了?点击登录"

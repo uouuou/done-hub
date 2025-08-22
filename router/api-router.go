@@ -112,6 +112,18 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.POST("/system_info/log", controller.SystemLog)
 		}
 
+		inviteCodeRoute := apiRouter.Group("/invite-code")
+		inviteCodeRoute.Use(middleware.AdminAuth())
+		{
+			inviteCodeRoute.GET("/", controller.GetInviteCodesList)
+			inviteCodeRoute.GET("/generate", controller.GenerateRandomInviteCode)
+			inviteCodeRoute.GET("/:id", controller.GetInviteCode)
+			inviteCodeRoute.POST("/", controller.CreateInviteCode)
+			inviteCodeRoute.PUT("/:id", controller.UpdateInviteCode)
+			inviteCodeRoute.DELETE("/:id", controller.DeleteInviteCode)
+			inviteCodeRoute.POST("/batch-delete", controller.BatchDeleteInviteCodes)
+		}
+
 		modelOwnedByRoute := apiRouter.Group("/model_ownedby")
 		modelOwnedByRoute.GET("/", controller.GetAllModelOwnedBy)
 		modelOwnedByRoute.Use(middleware.AdminAuth())

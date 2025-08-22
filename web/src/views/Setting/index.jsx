@@ -1,68 +1,73 @@
-import { useState, useEffect, useMemo } from 'react';
-import PropTypes from 'prop-types';
-import { Tabs, Tab, Box, Card } from '@mui/material';
-import { IconWorldCog, IconCpu, IconServerCog } from '@tabler/icons-react';
-import OperationSetting from './component/OperationSetting';
-import SystemSetting from './component/SystemSetting';
-import OtherSetting from './component/OtherSetting';
-import AdminContainer from 'ui-component/AdminContainer';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useMemo, useState } from 'react'
+import PropTypes from 'prop-types'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Box, Card, Tab, Tabs } from '@mui/material'
+import { IconCpu, IconServerCog, IconTicket, IconWorldCog } from '@tabler/icons-react'
+import OperationSetting from './component/OperationSetting'
+import SystemSetting from './component/SystemSetting'
+import OtherSetting from './component/OtherSetting'
+import InviteCodeSetting from './component/InviteCodeSetting'
+import AdminContainer from 'ui-component/AdminContainer'
+import { useTranslation } from 'react-i18next'
 
 function CustomTabPanel(props) {
-  const { children, value, index, ...other } = props;
+  const { children, value, index, ...other } = props
 
   return (
-    <div role="tabpanel" hidden={value !== index} id={`setting-tabpanel-${index}`} aria-labelledby={`setting-tab-${index}`} {...other}>
+    <div role="tabpanel" hidden={value !== index} id={`setting-tabpanel-${index}`}
+         aria-labelledby={`setting-tab-${index}`} {...other}>
       {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
     </div>
-  );
+  )
 }
 
 CustomTabPanel.propTypes = {
   children: PropTypes.node,
   index: PropTypes.number.isRequired,
   value: PropTypes.number.isRequired
-};
+}
 
 function a11yProps(index) {
   return {
     id: `setting-tab-${index}`,
     'aria-controls': `setting-tabpanel-${index}`
-  };
+  }
 }
 
 const Setting = () => {
-  const { t } = useTranslation();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const hash = location.hash.replace('#', '');
+  const { t } = useTranslation()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const hash = location.hash.replace('#', '')
+  const tabParam = searchParams.get('tab')
   const tabMap = useMemo(
     () => ({
       operation: 0,
       system: 1,
-      other: 2
+      invite: 2,
+      other: 3
     }),
     []
-  );
-  const [value, setValue] = useState(tabMap[hash] || 0);
+  )
+  const [value, setValue] = useState(tabMap[tabParam] || tabMap[hash] || 0)
 
   const handleChange = (event, newValue) => {
-    setValue(newValue);
-    const hashArray = Object.keys(tabMap);
-    navigate(`#${hashArray[newValue]}`);
-  };
+    setValue(newValue)
+    const hashArray = Object.keys(tabMap)
+    navigate(`#${hashArray[newValue]}`)
+  }
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = location.hash.replace('#', '');
-      setValue(tabMap[hash] || 0);
-    };
-    window.addEventListener('hashchange', handleHashChange);
+      const hash = location.hash.replace('#', '')
+      setValue(tabMap[hash] || 0)
+    }
+    window.addEventListener('hashchange', handleHashChange)
     return () => {
-      window.removeEventListener('hashchange', handleHashChange);
-    };
-  }, [location, tabMap]);
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [location, tabMap])
 
   return (
     <>
@@ -71,25 +76,32 @@ const Setting = () => {
           <Box sx={{ width: '100%' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
               <Tabs value={value} onChange={handleChange} variant="scrollable" scrollButtons="auto">
-                <Tab label={t('setting_index.operationSettings.title')} {...a11yProps(0)} icon={<IconCpu />} iconPosition="start" />
-                <Tab label={t('setting_index.systemSettings.title')} {...a11yProps(1)} icon={<IconServerCog />} iconPosition="start" />
-                <Tab label={t('setting_index.otherSettings.title')} {...a11yProps(2)} icon={<IconWorldCog />} iconPosition="start" />
+                <Tab label={t('setting_index.operationSettings.title')} {...a11yProps(0)} icon={<IconCpu/>}
+                     iconPosition="start"/>
+                <Tab label={t('setting_index.systemSettings.title')} {...a11yProps(1)} icon={<IconServerCog/>}
+                     iconPosition="start"/>
+                <Tab label="邀请码设置" {...a11yProps(2)} icon={<IconTicket/>} iconPosition="start"/>
+                <Tab label={t('setting_index.otherSettings.title')} {...a11yProps(3)} icon={<IconWorldCog/>}
+                     iconPosition="start"/>
               </Tabs>
             </Box>
             <CustomTabPanel value={value} index={0}>
-              <OperationSetting />
+              <OperationSetting/>
             </CustomTabPanel>
             <CustomTabPanel value={value} index={1}>
-              <SystemSetting />
+              <SystemSetting/>
             </CustomTabPanel>
             <CustomTabPanel value={value} index={2}>
-              <OtherSetting />
+              <InviteCodeSetting/>
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={3}>
+              <OtherSetting/>
             </CustomTabPanel>
           </Box>
         </AdminContainer>
       </Card>
     </>
-  );
-};
+  )
+}
 
-export default Setting;
+export default Setting

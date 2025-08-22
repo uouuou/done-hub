@@ -1,33 +1,19 @@
-import PropTypes from 'prop-types';
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import PropTypes from 'prop-types'
+import { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
 
-import {
-  Popover,
-  TableRow,
-  MenuItem,
-  TableCell,
-  IconButton,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Button,
-  Tooltip,
-  Stack,
-  ButtonGroup
-} from '@mui/material';
+import { Button, ButtonGroup, IconButton, MenuItem, Popover, Stack, TableCell, TableRow, Tooltip } from '@mui/material'
 
-import TableSwitch from 'ui-component/Switch';
-import { renderQuota, timestamp2string, copy, getChatLinks, replaceChatPlaceholders } from 'utils/common';
-import Label from 'ui-component/Label';
+import TableSwitch from 'ui-component/Switch'
+import ConfirmDialog from 'ui-component/confirm-dialog'
+import { copy, getChatLinks, renderQuota, replaceChatPlaceholders, timestamp2string } from 'utils/common'
+import Label from 'ui-component/Label'
 
-import { Icon } from '@iconify/react';
-import { IconCaretDownFilled } from '@tabler/icons-react';
-import { useTranslation } from 'react-i18next';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
+import { Icon } from '@iconify/react'
+import { IconCaretDownFilled } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 
 function createMenu(menuItems) {
   return (
@@ -39,115 +25,124 @@ function createMenu(menuItems) {
         </MenuItem>
       ))}
     </>
-  );
+  )
 }
 
 function statusInfo(t, status) {
   switch (status) {
     case 1:
-      return t('common.enable');
+      return t('common.enable')
     case 2:
-      return t('common.disable');
+      return t('common.disable')
     case 3:
-      return t('common.expired');
+      return t('common.expired')
     case 4:
-      return t('common.exhaust');
+      return t('common.exhaust')
     default:
-      return t('common.unknown');
+      return t('common.unknown')
   }
 }
 
 export default function TokensTableRow({ item, manageToken, handleOpenModal, setModalTokenId, userGroup }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(null);
-  const [menuItems, setMenuItems] = useState(null);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [statusSwitch, setStatusSwitch] = useState(item.status);
-  const siteInfo = useSelector((state) => state.siteInfo);
-  const chatLinks = getChatLinks();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(null)
+  const [menuItems, setMenuItems] = useState(null)
+  const [openDelete, setOpenDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [statusSwitch, setStatusSwitch] = useState(item.status)
+  const siteInfo = useSelector((state) => state.siteInfo)
+  const chatLinks = getChatLinks()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const handleDeleteOpen = () => {
-    handleCloseMenu();
-    setOpenDelete(true);
-  };
+    handleCloseMenu()
+    setOpenDelete(true)
+  }
 
   const handleDeleteClose = () => {
-    setOpenDelete(false);
-  };
+    setOpenDelete(false)
+  }
 
   const handleOpenMenu = (event, type) => {
     switch (type) {
       case 'copy':
-        setMenuItems(copyItems);
-        break;
+        setMenuItems(copyItems)
+        break
       case 'link':
-        setMenuItems(linkItems);
-        break;
+        setMenuItems(linkItems)
+        break
       default:
-        setMenuItems(actionItems);
+        setMenuItems(actionItems)
     }
-    setOpen(event.currentTarget);
-  };
+    setOpen(event.currentTarget)
+  }
 
   const handleCloseMenu = () => {
-    setOpen(null);
-  };
+    setOpen(null)
+  }
 
-  const handleStatus = async () => {
-    const switchVlue = statusSwitch === 1 ? 2 : 1;
-    const { success } = await manageToken(item.id, 'status', switchVlue);
+  const handleStatus = async() => {
+    const switchVlue = statusSwitch === 1 ? 2 : 1
+    const { success } = await manageToken(item.id, 'status', switchVlue)
     if (success) {
-      setStatusSwitch(switchVlue);
+      setStatusSwitch(switchVlue)
     }
-  };
+  }
 
-  const handleDelete = async () => {
-    handleCloseMenu();
-    await manageToken(item.id, 'delete', '');
-  };
+  const handleDelete = async() => {
+    if (deleting) return
+
+    handleCloseMenu()
+    setDeleting(true)
+    try {
+      await manageToken(item.id, 'delete', '')
+    } finally {
+      setDeleting(false)
+      setOpenDelete(false)
+    }
+  }
 
   const actionItems = createMenu([
     {
       text: t('common.edit'),
-      icon: <Icon icon="solar:pen-bold-duotone" style={{ marginRight: '16px' }} />,
+      icon: <Icon icon="solar:pen-bold-duotone" style={{ marginRight: '16px' }}/>,
       onClick: () => {
-        handleCloseMenu();
-        handleOpenModal();
-        setModalTokenId(item.id);
+        handleCloseMenu()
+        handleOpenModal()
+        setModalTokenId(item.id)
       },
       color: undefined
     },
     {
       text: t('common.delete'),
-      icon: <Icon icon="solar:trash-bin-trash-bold-duotone" style={{ marginRight: '16px' }} />,
+      icon: <Icon icon="solar:trash-bin-trash-bold-duotone" style={{ marginRight: '16px' }}/>,
       onClick: handleDeleteOpen,
       color: 'error.main'
     }
-  ]);
+  ])
 
   const handleCopy = (option, type) => {
-    let server = '';
+    let server = ''
     if (siteInfo?.server_address) {
-      server = siteInfo.server_address;
+      server = siteInfo.server_address
     } else {
-      server = window.location.host;
+      server = window.location.host
     }
 
-    server = encodeURIComponent(server);
+    server = encodeURIComponent(server)
 
-    let url = option.url;
+    let url = option.url
 
-    const key = 'sk-' + item.key;
-    const text = replaceChatPlaceholders(url, key, server);
+    const key = 'sk-' + item.key
+    const text = replaceChatPlaceholders(url, key, server)
     if (type === 'link') {
-      window.open(text);
+      window.open(text)
     } else {
-      copy(text, t('common.link'));
+      copy(text, t('common.link'))
     }
-    handleCloseMenu();
-  };
+    handleCloseMenu()
+  }
 
   const copyItems = createMenu(
     chatLinks.map((option) => ({
@@ -156,7 +151,7 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
       onClick: () => handleCopy(option, 'copy'),
       color: undefined
     }))
-  );
+  )
 
   const linkItems = createMenu(
     chatLinks.map((option) => ({
@@ -165,11 +160,11 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
       onClick: () => handleCopy(option, 'link'),
       color: undefined
     }))
-  );
+  )
 
   useEffect(() => {
-    setStatusSwitch(item.status);
-  }, [item.status]);
+    setStatusSwitch(item.status)
+  }, [item.status])
 
   return (
     <>
@@ -188,7 +183,7 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
         <TableCell>
           <Tooltip
             title={(() => {
-              return statusInfo(t, statusSwitch);
+              return statusInfo(t, statusSwitch)
             })()}
             placement="top"
           >
@@ -215,25 +210,25 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
               <Button
                 color="primary"
                 onClick={() => {
-                  copy(`sk-${item.key}`, t('token_index.token'));
+                  copy(`sk-${item.key}`, t('token_index.token'))
                 }}
               >
-                {isMobile ? <Icon icon="mdi:content-copy" /> : t('token_index.copy')}
+                {isMobile ? <Icon icon="mdi:content-copy"/> : t('token_index.copy')}
               </Button>
               <Button size="small" onClick={(e) => handleOpenMenu(e, 'copy')}>
-                <IconCaretDownFilled size={'16px'} />
+                <IconCaretDownFilled size={'16px'}/>
               </Button>
             </ButtonGroup>
             <ButtonGroup size="small" onClick={(e) => handleOpenMenu(e, 'link')} aria-label="split button">
               <Button size="small" color="primary">
-                {isMobile ? <Icon icon="mdi:chat" /> : t('token_index.chat')}
+                {isMobile ? <Icon icon="mdi:chat"/> : t('token_index.chat')}
               </Button>
               <Button size="small">
-                <IconCaretDownFilled size={'16px'} />
+                <IconCaretDownFilled size={'16px'}/>
               </Button>
             </ButtonGroup>
             <IconButton onClick={(e) => handleOpenMenu(e, 'action')} sx={{ color: 'rgb(99, 115, 129)' }}>
-              <Icon icon="solar:menu-dots-circle-bold-duotone" width={20} />
+              <Icon icon="solar:menu-dots-circle-bold-duotone" width={20}/>
             </IconButton>
           </Stack>
         </TableCell>
@@ -251,22 +246,24 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
         {menuItems}
       </Popover>
 
-      <Dialog open={openDelete} onClose={handleDeleteClose}>
-        <DialogTitle>{t('token_index.deleteToken')}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t('token_index.confirmDeleteToken')} {item.name}？
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>{t('token_index.close')}</Button>
-          <Button onClick={handleDelete} sx={{ color: 'error.main' }} autoFocus>
-            {t('token_index.delete')}
+      <ConfirmDialog
+        open={openDelete}
+        onClose={handleDeleteClose}
+        title={t('common.delete')}
+        content={t('common.deleteConfirm', { title: `Token "${item.name}"` })}
+        action={
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? '删除中...' : t('token_index.delete')}
           </Button>
-        </DialogActions>
-      </Dialog>
+        }
+      />
     </>
-  );
+  )
 }
 
 TokensTableRow.propTypes = {
@@ -275,4 +272,4 @@ TokensTableRow.propTypes = {
   handleOpenModal: PropTypes.func,
   setModalTokenId: PropTypes.func,
   userGroup: PropTypes.object
-};
+}

@@ -43,6 +43,7 @@ var WeChatAuthEnabled = false
 var LarkAuthEnabled = false
 var TurnstileCheckEnabled = false
 var RegisterEnabled = true
+var InviteCodeRegisterEnabled = false
 var OIDCAuthEnabled = false
 var LinuxDoOAuthEnabled = false
 var LinuxDoOAuthTrustLevelEnabled = false

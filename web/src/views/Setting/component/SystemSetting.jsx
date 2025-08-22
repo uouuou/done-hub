@@ -1,32 +1,32 @@
-import { useState, useEffect, useContext } from 'react';
-import SubCard from 'ui-component/cards/SubCard';
+import { useContext, useEffect, useState } from 'react'
+import SubCard from 'ui-component/cards/SubCard'
 import {
-  Stack,
-  FormControl,
-  InputLabel,
-  OutlinedInput,
-  Checkbox,
-  Button,
-  FormControlLabel,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Divider,
   Alert,
   Autocomplete,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  InputLabel,
+  OutlinedInput,
+  Stack,
   TextField
-} from '@mui/material';
-import Grid from '@mui/material/Unstable_Grid2';
-import { showError, showSuccess, removeTrailingSlash } from 'utils/common'; //,
-import { API } from 'utils/api';
-import { createFilterOptions } from '@mui/material/Autocomplete';
-import { LoadStatusContext } from 'contexts/StatusContext';
-import { useTranslation } from 'react-i18next';
+} from '@mui/material'
+import Grid from '@mui/material/Unstable_Grid2'
+import { removeTrailingSlash, showError, showSuccess } from 'utils/common' //,
+import { API } from 'utils/api'
+import { createFilterOptions } from '@mui/material/Autocomplete'
+import { LoadStatusContext } from 'contexts/StatusContext'
+import { useTranslation } from 'react-i18next'
 
-const filter = createFilterOptions();
+const filter = createFilterOptions()
 const SystemSetting = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
   let [inputs, setInputs] = useState({
     PasswordLoginEnabled: '',
     PasswordRegisterEnabled: '',
@@ -57,6 +57,7 @@ const SystemSetting = () => {
     WeChatServerToken: '',
     WeChatAccountQRCodeImageURL: '',
     TurnstileCheckEnabled: '',
+    InviteCodeRegisterEnabled: '',
     TurnstileSiteKey: '',
     TurnstileSecretKey: '',
     RegisterEnabled: '',
@@ -67,43 +68,43 @@ const SystemSetting = () => {
     LinuxDoOAuthLowestTrustLevel: '',
     EmailDomainRestrictionEnabled: '',
     EmailDomainWhitelist: []
-  });
-  const [originInputs, setOriginInputs] = useState({});
-  let [loading, setLoading] = useState(false);
-  const [EmailDomainWhitelist, setEmailDomainWhitelist] = useState([]);
-  const [showPasswordWarningModal, setShowPasswordWarningModal] = useState(false);
-  const loadStatus = useContext(LoadStatusContext);
+  })
+  const [originInputs, setOriginInputs] = useState({})
+  let [loading, setLoading] = useState(false)
+  const [EmailDomainWhitelist, setEmailDomainWhitelist] = useState([])
+  const [showPasswordWarningModal, setShowPasswordWarningModal] = useState(false)
+  const loadStatus = useContext(LoadStatusContext)
 
-  const getOptions = async () => {
+  const getOptions = async() => {
     try {
-      const res = await API.get('/api/option/');
-      const { success, message, data } = res.data;
+      const res = await API.get('/api/option/')
+      const { success, message, data } = res.data
       if (success) {
-        let newInputs = {};
+        let newInputs = {}
         data.forEach((item) => {
-          newInputs[item.key] = item.value;
-        });
+          newInputs[item.key] = item.value
+        })
         setInputs({
           ...newInputs,
           EmailDomainWhitelist: newInputs.EmailDomainWhitelist.split(',')
-        });
-        setOriginInputs(newInputs);
+        })
+        setOriginInputs(newInputs)
 
-        setEmailDomainWhitelist(newInputs.EmailDomainWhitelist.split(','));
+        setEmailDomainWhitelist(newInputs.EmailDomainWhitelist.split(','))
       } else {
-        showError(message);
+        showError(message)
       }
     } catch (error) {
-      return;
+
     }
-  };
+  }
 
   useEffect(() => {
-    getOptions().then();
-  }, []);
+    getOptions().then()
+  }, [])
 
-  const updateOption = async (key, value) => {
-    setLoading(true);
+  const updateOption = async(key, value) => {
+    setLoading(true)
     switch (key) {
       case 'PasswordLoginEnabled':
       case 'PasswordRegisterEnabled':
@@ -118,46 +119,47 @@ const SystemSetting = () => {
       case 'TurnstileCheckEnabled':
       case 'EmailDomainRestrictionEnabled':
       case 'RegisterEnabled':
-        value = inputs[key] === 'true' ? 'false' : 'true';
-        break;
+      case 'InviteCodeRegisterEnabled':
+        value = inputs[key] === 'true' ? 'false' : 'true'
+        break
       default:
-        break;
+        break
     }
 
     try {
       const res = await API.put('/api/option/', {
         key,
         value
-      });
-      const { success, message } = res.data;
+      })
+      const { success, message } = res.data
       if (success) {
         if (key === 'EmailDomainWhitelist') {
-          value = value.split(',');
+          value = value.split(',')
         }
         setInputs((inputs) => ({
           ...inputs,
           [key]: value
-        }));
-        getOptions();
-        await loadStatus();
-        showSuccess('设置成功！');
+        }))
+        getOptions()
+        await loadStatus()
+        showSuccess('设置成功！')
       } else {
-        showError(message);
+        showError(message)
       }
     } catch (error) {
-      return;
+      return
     }
 
-    setLoading(false);
-  };
+    setLoading(false)
+  }
 
-  const handleInputChange = async (event) => {
-    let { name, value } = event.target;
+  const handleInputChange = async(event) => {
+    let { name, value } = event.target
 
     if (name === 'PasswordLoginEnabled' && inputs[name] === 'true') {
       // block disabling password login
-      setShowPasswordWarningModal(true);
-      return;
+      setShowPasswordWarningModal(true)
+      return
     }
     if (
       name === 'Notice' ||
@@ -177,117 +179,117 @@ const SystemSetting = () => {
       name === 'TurnstileSecretKey' ||
       name === 'EmailDomainWhitelist' ||
       name === 'LarkClientId' ||
-      name === 'LarkClientSecret'||
+      name === 'LarkClientSecret' ||
       name === 'LinuxDoClientId' ||
       name === 'LinuxDoClientSecret' ||
-      name === 'LinuxDoOAuthLowestTrustLevel' 
+      name === 'LinuxDoOAuthLowestTrustLevel'
     ) {
-      setInputs((inputs) => ({ ...inputs, [name]: value }));
+      setInputs((inputs) => ({ ...inputs, [name]: value }))
     } else {
-      await updateOption(name, value);
+      await updateOption(name, value)
     }
-  };
+  }
 
-  const submitServerAddress = async () => {
-    let ServerAddress = removeTrailingSlash(inputs.ServerAddress);
-    await updateOption('ServerAddress', ServerAddress);
-  };
+  const submitServerAddress = async() => {
+    let ServerAddress = removeTrailingSlash(inputs.ServerAddress)
+    await updateOption('ServerAddress', ServerAddress)
+  }
 
-  const submitSMTP = async () => {
+  const submitSMTP = async() => {
     if (originInputs['SMTPServer'] !== inputs.SMTPServer) {
-      await updateOption('SMTPServer', inputs.SMTPServer);
+      await updateOption('SMTPServer', inputs.SMTPServer)
     }
     if (originInputs['SMTPAccount'] !== inputs.SMTPAccount) {
-      await updateOption('SMTPAccount', inputs.SMTPAccount);
+      await updateOption('SMTPAccount', inputs.SMTPAccount)
     }
     if (originInputs['SMTPFrom'] !== inputs.SMTPFrom) {
-      await updateOption('SMTPFrom', inputs.SMTPFrom);
+      await updateOption('SMTPFrom', inputs.SMTPFrom)
     }
     if (originInputs['SMTPPort'] !== inputs.SMTPPort && inputs.SMTPPort !== '') {
-      await updateOption('SMTPPort', inputs.SMTPPort);
+      await updateOption('SMTPPort', inputs.SMTPPort)
     }
     if (originInputs['SMTPToken'] !== inputs.SMTPToken && inputs.SMTPToken !== '') {
-      await updateOption('SMTPToken', inputs.SMTPToken);
+      await updateOption('SMTPToken', inputs.SMTPToken)
     }
-  };
+  }
 
-  const submitEmailDomainWhitelist = async () => {
-    await updateOption('EmailDomainWhitelist', inputs.EmailDomainWhitelist.join(','));
-  };
+  const submitEmailDomainWhitelist = async() => {
+    await updateOption('EmailDomainWhitelist', inputs.EmailDomainWhitelist.join(','))
+  }
 
-  const submitWeChat = async () => {
+  const submitWeChat = async() => {
     if (originInputs['WeChatServerAddress'] !== inputs.WeChatServerAddress) {
-      await updateOption('WeChatServerAddress', removeTrailingSlash(inputs.WeChatServerAddress));
+      await updateOption('WeChatServerAddress', removeTrailingSlash(inputs.WeChatServerAddress))
     }
     if (originInputs['WeChatAccountQRCodeImageURL'] !== inputs.WeChatAccountQRCodeImageURL) {
-      await updateOption('WeChatAccountQRCodeImageURL', inputs.WeChatAccountQRCodeImageURL);
+      await updateOption('WeChatAccountQRCodeImageURL', inputs.WeChatAccountQRCodeImageURL)
     }
     if (originInputs['WeChatServerToken'] !== inputs.WeChatServerToken && inputs.WeChatServerToken !== '') {
-      await updateOption('WeChatServerToken', inputs.WeChatServerToken);
+      await updateOption('WeChatServerToken', inputs.WeChatServerToken)
     }
-  };
+  }
 
-  const submitGitHubOAuth = async () => {
+  const submitGitHubOAuth = async() => {
     if (originInputs['GitHubClientId'] !== inputs.GitHubClientId) {
-      await updateOption('GitHubClientId', inputs.GitHubClientId);
+      await updateOption('GitHubClientId', inputs.GitHubClientId)
     }
     if (originInputs['GitHubClientSecret'] !== inputs.GitHubClientSecret && inputs.GitHubClientSecret !== '') {
-      await updateOption('GitHubClientSecret', inputs.GitHubClientSecret);
+      await updateOption('GitHubClientSecret', inputs.GitHubClientSecret)
     }
-  };
+  }
 
-  const submitOIDCOAuth = async () => {
+  const submitOIDCOAuth = async() => {
     // 检查并更新 OIDCClientId
     if (originInputs['OIDCClientId'] !== inputs.OIDCClientId) {
-      await updateOption('OIDCClientId', inputs.OIDCClientId);
+      await updateOption('OIDCClientId', inputs.OIDCClientId)
     }
     // 检查并更新 OIDCClientSecret
     if (originInputs['OIDCClientSecret'] !== inputs.OIDCClientSecret && inputs.OIDCClientSecret !== '') {
-      await updateOption('OIDCClientSecret', inputs.OIDCClientSecret);
+      await updateOption('OIDCClientSecret', inputs.OIDCClientSecret)
     }
     // 检查并更新 OIDCIssuer
     if (originInputs['OIDCIssuer'] !== inputs.OIDCIssuer) {
-      await updateOption('OIDCIssuer', inputs.OIDCIssuer);
+      await updateOption('OIDCIssuer', inputs.OIDCIssuer)
     }
     // 检查并更新 OIDCScopes
     if (originInputs['OIDCScopes'] !== inputs.OIDCScopes) {
-      await updateOption('OIDCScopes', inputs.OIDCScopes);
+      await updateOption('OIDCScopes', inputs.OIDCScopes)
     }
     // 检查并更新 OIDCUsernameClaims
     if (originInputs['OIDCUsernameClaims'] !== inputs.OIDCUsernameClaims) {
-      await updateOption('OIDCUsernameClaims', inputs.OIDCUsernameClaims);
+      await updateOption('OIDCUsernameClaims', inputs.OIDCUsernameClaims)
     }
-  };
+  }
 
-  const submitLinuxDoOAuth = async () => {
+  const submitLinuxDoOAuth = async() => {
     if (originInputs['LinuxDoClientId'] !== inputs.LinuxDoClientId) {
-      await updateOption('LinuxDoClientId', inputs.LinuxDoClientId);
+      await updateOption('LinuxDoClientId', inputs.LinuxDoClientId)
     }
     if (originInputs['LinuxDoClientSecret'] !== inputs.LinuxDoClientSecret && inputs.LinuxDoClientSecret !== '') {
-      await updateOption('LinuxDoClientSecret', inputs.LinuxDoClientSecret);
+      await updateOption('LinuxDoClientSecret', inputs.LinuxDoClientSecret)
     }
     if (originInputs['LinuxDoOAuthLowestTrustLevel'] !== inputs.LinuxDoOAuthLowestTrustLevel) {
-      await updateOption('LinuxDoOAuthLowestTrustLevel', inputs.LinuxDoOAuthLowestTrustLevel);
+      await updateOption('LinuxDoOAuthLowestTrustLevel', inputs.LinuxDoOAuthLowestTrustLevel)
     }
-  };
+  }
 
-  const submitTurnstile = async () => {
+  const submitTurnstile = async() => {
     if (originInputs['TurnstileSiteKey'] !== inputs.TurnstileSiteKey) {
-      await updateOption('TurnstileSiteKey', inputs.TurnstileSiteKey);
+      await updateOption('TurnstileSiteKey', inputs.TurnstileSiteKey)
     }
     if (originInputs['TurnstileSecretKey'] !== inputs.TurnstileSecretKey && inputs.TurnstileSecretKey !== '') {
-      await updateOption('TurnstileSecretKey', inputs.TurnstileSecretKey);
+      await updateOption('TurnstileSecretKey', inputs.TurnstileSecretKey)
     }
-  };
+  }
 
-  const submitLarkOAuth = async () => {
+  const submitLarkOAuth = async() => {
     if (originInputs['LarkClientId'] !== inputs.LarkClientId) {
-      await updateOption('LarkClientId', inputs.LarkClientId);
+      await updateOption('LarkClientId', inputs.LarkClientId)
     }
     if (originInputs['LarkClientSecret'] !== inputs.LarkClientSecret && inputs.LarkClientSecret !== '') {
-      await updateOption('LarkClientSecret', inputs.LarkClientSecret);
+      await updateOption('LarkClientSecret', inputs.LarkClientSecret)
     }
-  };
+  }
 
   return (
     <>
@@ -296,7 +298,8 @@ const SystemSetting = () => {
           <Grid container spacing={{ xs: 3, sm: 2, md: 4 }}>
             <Grid xs={12}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="ServerAddress">{t('setting_index.systemSettings.generalSettings.serverAddress')}</InputLabel>
+                <InputLabel
+                  htmlFor="ServerAddress">{t('setting_index.systemSettings.generalSettings.serverAddress')}</InputLabel>
                 <OutlinedInput
                   id="ServerAddress"
                   name="ServerAddress"
@@ -322,7 +325,8 @@ const SystemSetting = () => {
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.passwordLogin')}
                 control={
-                  <Checkbox checked={inputs.PasswordLoginEnabled === 'true'} onChange={handleInputChange} name="PasswordLoginEnabled" />
+                  <Checkbox checked={inputs.PasswordLoginEnabled === 'true'} onChange={handleInputChange}
+                            name="PasswordLoginEnabled"/>
                 }
               />
             </Grid>
@@ -353,50 +357,65 @@ const SystemSetting = () => {
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.gitHubOAuth')}
-                control={<Checkbox checked={inputs.GitHubOAuthEnabled === 'true'} onChange={handleInputChange} name="GitHubOAuthEnabled" />}
+                control={<Checkbox checked={inputs.GitHubOAuthEnabled === 'true'} onChange={handleInputChange}
+                                   name="GitHubOAuthEnabled"/>}
               />
             </Grid>
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.weChatAuth')}
-                control={<Checkbox checked={inputs.WeChatAuthEnabled === 'true'} onChange={handleInputChange} name="WeChatAuthEnabled" />}
+                control={<Checkbox checked={inputs.WeChatAuthEnabled === 'true'} onChange={handleInputChange}
+                                   name="WeChatAuthEnabled"/>}
               />
             </Grid>
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.larkAuth')}
-                control={<Checkbox checked={inputs.LarkAuthEnabled === 'true'} onChange={handleInputChange} name="LarkAuthEnabled" />}
+                control={<Checkbox checked={inputs.LarkAuthEnabled === 'true'} onChange={handleInputChange}
+                                   name="LarkAuthEnabled"/>}
               />
             </Grid>
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.oidcAuth')}
-                control={<Checkbox checked={inputs.OIDCAuthEnabled === 'true'} onChange={handleInputChange} name="OIDCAuthEnabled" />}
+                control={<Checkbox checked={inputs.OIDCAuthEnabled === 'true'} onChange={handleInputChange}
+                                   name="OIDCAuthEnabled"/>}
               />
             </Grid>
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.linuxDoOAuth')}
-                control={<Checkbox checked={inputs.LinuxDoOAuthEnabled === 'true'} onChange={handleInputChange} name="LinuxDoOAuthEnabled" />}
+                control={<Checkbox checked={inputs.LinuxDoOAuthEnabled === 'true'} onChange={handleInputChange}
+                                   name="LinuxDoOAuthEnabled"/>}
               />
             </Grid>
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.linuxDoOAuthTrustLevel')}
-                control={<Checkbox checked={inputs.LinuxDoOAuthTrustLevelEnabled === 'true'} onChange={handleInputChange} name="LinuxDoOAuthTrustLevelEnabled" />}
+                control={<Checkbox checked={inputs.LinuxDoOAuthTrustLevelEnabled === 'true'}
+                                   onChange={handleInputChange} name="LinuxDoOAuthTrustLevelEnabled"/>}
               />
             </Grid>
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.registerEnabled')}
-                control={<Checkbox checked={inputs.RegisterEnabled === 'true'} onChange={handleInputChange} name="RegisterEnabled" />}
+                control={<Checkbox checked={inputs.RegisterEnabled === 'true'} onChange={handleInputChange}
+                                   name="RegisterEnabled"/>}
+              />
+            </Grid>
+            <Grid xs={12} md={3}>
+              <FormControlLabel
+                label="启用邀请码注册"
+                control={<Checkbox checked={inputs.InviteCodeRegisterEnabled === 'true'} onChange={handleInputChange}
+                                   name="InviteCodeRegisterEnabled"/>}
               />
             </Grid>
             <Grid xs={12} md={3}>
               <FormControlLabel
                 label={t('setting_index.systemSettings.configureLoginRegister.turnstileCheck')}
                 control={
-                  <Checkbox checked={inputs.TurnstileCheckEnabled === 'true'} onChange={handleInputChange} name="TurnstileCheckEnabled" />
+                  <Checkbox checked={inputs.TurnstileCheckEnabled === 'true'} onChange={handleInputChange}
+                            name="TurnstileCheckEnabled"/>
                 }
               />
             </Grid>
@@ -447,8 +466,8 @@ const SystemSetting = () => {
                         name: 'EmailDomainWhitelist',
                         value: value
                       }
-                    };
-                    handleInputChange(event);
+                    }
+                    handleInputChange(event)
                   }}
                   filterSelectedOptions
                   renderInput={(params) => (
@@ -459,13 +478,13 @@ const SystemSetting = () => {
                     />
                   )}
                   filterOptions={(options, params) => {
-                    const filtered = filter(options, params);
-                    const { inputValue } = params;
-                    const isExisting = options.some((option) => inputValue === option);
+                    const filtered = filter(options, params)
+                    const { inputValue } = params
+                    const isExisting = options.some((option) => inputValue === option)
                     if (inputValue !== '' && !isExisting) {
-                      filtered.push(inputValue);
+                      filtered.push(inputValue)
                     }
-                    return filtered;
+                    return filtered
                   }}
                 />
               </FormControl>
@@ -488,7 +507,8 @@ const SystemSetting = () => {
             </Grid>
             <Grid xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="SMTPServer">{t('setting_index.systemSettings.configureSMTP.smtpServer')}</InputLabel>
+                <InputLabel
+                  htmlFor="SMTPServer">{t('setting_index.systemSettings.configureSMTP.smtpServer')}</InputLabel>
                 <OutlinedInput
                   id="SMTPServer"
                   name="SMTPServer"
@@ -516,7 +536,8 @@ const SystemSetting = () => {
             </Grid>
             <Grid xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="SMTPAccount">{t('setting_index.systemSettings.configureSMTP.smtpAccount')}</InputLabel>
+                <InputLabel
+                  htmlFor="SMTPAccount">{t('setting_index.systemSettings.configureSMTP.smtpAccount')}</InputLabel>
                 <OutlinedInput
                   id="SMTPAccount"
                   name="SMTPAccount"
@@ -581,12 +602,14 @@ const SystemSetting = () => {
             <Grid xs={12}>
               <Alert severity="info" sx={{ wordWrap: 'break-word' }}>
                 {t('setting_index.systemSettings.configureGitHubOAuthApp.alert1')} <b>{inputs.ServerAddress}</b>
-                {t('setting_index.systemSettings.configureGitHubOAuthApp.alert2')} <b>{`${inputs.ServerAddress}/oauth/github`}</b>
+                {t('setting_index.systemSettings.configureGitHubOAuthApp.alert2')}
+                <b>{`${inputs.ServerAddress}/oauth/github`}</b>
               </Alert>
             </Grid>
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="GitHubClientId">{t('setting_index.systemSettings.configureGitHubOAuthApp.clientId')}</InputLabel>
+                <InputLabel
+                  htmlFor="GitHubClientId">{t('setting_index.systemSettings.configureGitHubOAuthApp.clientId')}</InputLabel>
                 <OutlinedInput
                   id="GitHubClientId"
                   name="GitHubClientId"
@@ -653,7 +676,8 @@ const SystemSetting = () => {
             </Grid>
             <Grid xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="WeChatServerToken">{t('setting_index.systemSettings.configureWeChatServer.accessToken')}</InputLabel>
+                <InputLabel
+                  htmlFor="WeChatServerToken">{t('setting_index.systemSettings.configureWeChatServer.accessToken')}</InputLabel>
                 <OutlinedInput
                   id="WeChatServerToken"
                   name="WeChatServerToken"
@@ -705,13 +729,16 @@ const SystemSetting = () => {
           <Grid container spacing={{ xs: 3, sm: 2, md: 4 }}>
             <Grid xs={12}>
               <Alert severity="info" sx={{ wordWrap: 'break-word' }}>
-                {t('setting_index.systemSettings.configureFeishuAuthorization.alert1')} <code>{inputs.ServerAddress}</code>
-                {t('setting_index.systemSettings.configureFeishuAuthorization.alert2')} <code>{`${inputs.ServerAddress}/oauth/lark`}</code>
+                {t('setting_index.systemSettings.configureFeishuAuthorization.alert1')}
+                <code>{inputs.ServerAddress}</code>
+                {t('setting_index.systemSettings.configureFeishuAuthorization.alert2')}
+                <code>{`${inputs.ServerAddress}/oauth/lark`}</code>
               </Alert>
             </Grid>
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="LarkClientId">{t('setting_index.systemSettings.configureFeishuAuthorization.appId')}</InputLabel>
+                <InputLabel
+                  htmlFor="LarkClientId">{t('setting_index.systemSettings.configureFeishuAuthorization.appId')}</InputLabel>
                 <OutlinedInput
                   id="LarkClientId"
                   name="LarkClientId"
@@ -762,7 +789,8 @@ const SystemSetting = () => {
           <Grid container spacing={{ xs: 3, sm: 2, md: 4 }}>
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="TurnstileSiteKey">{t('setting_index.systemSettings.configureTurnstile.siteKey')}</InputLabel>
+                <InputLabel
+                  htmlFor="TurnstileSiteKey">{t('setting_index.systemSettings.configureTurnstile.siteKey')}</InputLabel>
                 <OutlinedInput
                   id="TurnstileSiteKey"
                   name="TurnstileSiteKey"
@@ -776,7 +804,8 @@ const SystemSetting = () => {
             </Grid>
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="TurnstileSecretKey">{t('setting_index.systemSettings.configureTurnstile.secretKey')}</InputLabel>
+                <InputLabel
+                  htmlFor="TurnstileSecretKey">{t('setting_index.systemSettings.configureTurnstile.secretKey')}</InputLabel>
                 <OutlinedInput
                   id="TurnstileSecretKey"
                   name="TurnstileSecretKey"
@@ -805,13 +834,15 @@ const SystemSetting = () => {
             <Grid xs={12}>
               <Alert severity="info" sx={{ wordWrap: 'break-word' }}>
                 {t('setting_index.systemSettings.configureOIDCAuthorization.alert1')} <b>{inputs.ServerAddress}</b>
-                {t('setting_index.systemSettings.configureOIDCAuthorization.alert2')} <b>{`${inputs.ServerAddress}/oauth/oidc`}</b>
+                {t('setting_index.systemSettings.configureOIDCAuthorization.alert2')}
+                <b>{`${inputs.ServerAddress}/oauth/oidc`}</b>
               </Alert>
             </Grid>
 
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="OIDCClientId">{t('setting_index.systemSettings.configureOIDCAuthorization.clientId')}</InputLabel>
+                <InputLabel
+                  htmlFor="OIDCClientId">{t('setting_index.systemSettings.configureOIDCAuthorization.clientId')}</InputLabel>
                 <OutlinedInput
                   id="OIDCClientId"
                   name="OIDCClientId"
@@ -843,7 +874,8 @@ const SystemSetting = () => {
 
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="OIDCIssuer">{t('setting_index.systemSettings.configureOIDCAuthorization.issuer')}</InputLabel>
+                <InputLabel
+                  htmlFor="OIDCIssuer">{t('setting_index.systemSettings.configureOIDCAuthorization.issuer')}</InputLabel>
                 <OutlinedInput
                   id="OIDCIssuer"
                   name="OIDCIssuer"
@@ -858,7 +890,8 @@ const SystemSetting = () => {
 
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="OIDCScopes">{t('setting_index.systemSettings.configureOIDCAuthorization.scopes')}</InputLabel>
+                <InputLabel
+                  htmlFor="OIDCScopes">{t('setting_index.systemSettings.configureOIDCAuthorization.scopes')}</InputLabel>
                 <OutlinedInput
                   id="OIDCScopes"
                   name="OIDCScopes"
@@ -913,12 +946,14 @@ const SystemSetting = () => {
             <Grid xs={12}>
               <Alert severity="info" sx={{ wordWrap: 'break-word' }}>
                 {t('setting_index.systemSettings.configureLinuxDoOAuthApp.alert1')} <b>{inputs.ServerAddress}</b>
-                {t('setting_index.systemSettings.configureLinuxDoOAuthApp.alert2')} <b>{`${inputs.ServerAddress}/oauth/linuxdo`}</b>
+                {t('setting_index.systemSettings.configureLinuxDoOAuthApp.alert2')}
+                <b>{`${inputs.ServerAddress}/oauth/linuxdo`}</b>
               </Alert>
             </Grid>
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="LinuxDoClientId">{t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientId')}</InputLabel>
+                <InputLabel
+                  htmlFor="LinuxDoClientId">{t('setting_index.systemSettings.configureLinuxDoOAuthApp.clientId')}</InputLabel>
                 <OutlinedInput
                   id="LinuxDoClientId"
                   name="LinuxDoClientId"
@@ -948,7 +983,8 @@ const SystemSetting = () => {
             </Grid>
             <Grid xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel htmlFor="LinuxDoOAuthLowestTrustLevel">{t('setting_index.systemSettings.configureLinuxDoOAuthApp.lowestTrustLevel')}</InputLabel>
+                <InputLabel
+                  htmlFor="LinuxDoOAuthLowestTrustLevel">{t('setting_index.systemSettings.configureLinuxDoOAuthApp.lowestTrustLevel')}</InputLabel>
                 <OutlinedInput
                   id="LinuxDoOAuthLowestTrustLevel"
                   name="LinuxDoOAuthLowestTrustLevel"
@@ -970,18 +1006,19 @@ const SystemSetting = () => {
 
       </Stack>
       <Dialog open={showPasswordWarningModal} onClose={() => setShowPasswordWarningModal(false)} maxWidth={'md'}>
-        <DialogTitle sx={{ margin: '0px', fontWeight: 700, lineHeight: '1.55556', padding: '24px', fontSize: '1.125rem' }}>
+        <DialogTitle
+          sx={{ margin: '0px', fontWeight: 700, lineHeight: '1.55556', padding: '24px', fontSize: '1.125rem' }}>
           警告
         </DialogTitle>
-        <Divider />
+        <Divider/>
         <DialogContent>取消密码登录将导致所有未绑定其他登录方式的用户（包括管理员）无法通过密码登录，确认取消？</DialogContent>
         <DialogActions>
           <Button onClick={() => setShowPasswordWarningModal(false)}>取消</Button>
           <Button
             sx={{ color: 'error.main' }}
-            onClick={async () => {
-              setShowPasswordWarningModal(false);
-              await updateOption('PasswordLoginEnabled', 'false');
+            onClick={async() => {
+              setShowPasswordWarningModal(false)
+              await updateOption('PasswordLoginEnabled', 'false')
             }}
           >
             确定
@@ -989,7 +1026,7 @@ const SystemSetting = () => {
         </DialogActions>
       </Dialog>
     </>
-  );
-};
+  )
+}
 
-export default SystemSetting;
+export default SystemSetting

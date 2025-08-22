@@ -207,6 +207,9 @@ func GetUserInvoices(params *StatisticsMonthSearchParams) (*DataResult[Statistic
 		dateStr = "TO_CHAR(date, 'YYYY-MM-DD') as date"
 	} else if common.UsingSQLite {
 		dateStr = "strftime('%Y-%m-%d', date) as date"
+	} else {
+		// MySQL/TiDB - 显式格式化日期以确保兼容性
+		dateStr = "DATE_FORMAT(date, '%Y-%m-%d') as date"
 	}
 
 	// First, get the total count without pagination
@@ -304,6 +307,9 @@ func GetUserInvoiceDetail(params *StatisticsMonthDetailSearchParams) ([]*Statist
 		dateSqlStr = "TO_CHAR(date, 'YYYY-MM-DD') as date"
 	} else if common.UsingSQLite {
 		dateSqlStr = "strftime('%Y-%m-%d', date) as date"
+	} else {
+		// MySQL/TiDB - 显式格式化日期以确保兼容性
+		dateSqlStr = "DATE_FORMAT(date, '%Y-%m-%d') as date"
 	}
 
 	var statistics []*StatisticsMonthModel

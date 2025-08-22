@@ -34,6 +34,7 @@ func InitOptionMap() {
 	config.GlobalOption.RegisterBool("LarkAuthEnabled", &config.LarkAuthEnabled)
 	config.GlobalOption.RegisterBool("OIDCAuthEnabled", &config.OIDCAuthEnabled)
 	config.GlobalOption.RegisterBool("LinuxDoOAuthEnabled", &config.LinuxDoOAuthEnabled)
+	config.GlobalOption.RegisterBool("InviteCodeRegisterEnabled", &config.InviteCodeRegisterEnabled)
 	config.GlobalOption.RegisterBool("LinuxDoOAuthTrustLevelEnabled", &config.LinuxDoOAuthTrustLevelEnabled)
 	config.GlobalOption.RegisterBool("TurnstileCheckEnabled", &config.TurnstileCheckEnabled)
 	config.GlobalOption.RegisterBool("RegisterEnabled", &config.RegisterEnabled)

@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import useRegister from 'hooks/useRegister';
-import Turnstile from 'react-turnstile';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
+import useRegister from 'hooks/useRegister'
+import Turnstile from 'react-turnstile'
+import { useSearchParams } from 'react-router-dom'
 // import { useSelector } from 'react-redux';
-
 // material-ui
-import { useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles'
 import {
   Box,
   Button,
+  CircularProgress,
   FormControl,
   FormHelperText,
   Grid,
@@ -18,99 +18,101 @@ import {
   InputLabel,
   OutlinedInput,
   Typography
-} from '@mui/material';
+} from '@mui/material'
 
 // third party
-import * as Yup from 'yup';
-import { Formik } from 'formik';
+import * as Yup from 'yup'
+import { Formik } from 'formik'
 
 // project imports
-import AnimateButton from 'ui-component/extended/AnimateButton';
-import { strengthColor, strengthIndicator } from 'utils/password-strength';
+import AnimateButton from 'ui-component/extended/AnimateButton'
+import { strengthColor, strengthIndicator } from 'utils/password-strength'
 
 // assets
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { showError, showInfo } from 'utils/common';
-import { useTranslation } from 'react-i18next';
+import Visibility from '@mui/icons-material/Visibility'
+import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import { showError, showInfo } from 'utils/common'
+import { useTranslation } from 'react-i18next'
 
 // ===========================|| FIREBASE - REGISTER ||=========================== //
 
 const RegisterForm = ({ ...others }) => {
-  const { t } = useTranslation();
-  const theme = useTheme();
-  const { register, sendVerificationCode } = useRegister();
-  const siteInfo = useSelector((state) => state.siteInfo);
-  const [showPassword, setShowPassword] = useState(false);
-  const [searchParams] = useSearchParams();
-  const [countdown, setCountdown] = useState(30);
-  const [disableButton, setDisableButton] = useState(false);
+  const { t } = useTranslation()
+  const theme = useTheme()
+  const { register, sendVerificationCode } = useRegister()
+  const siteInfo = useSelector((state) => state.siteInfo)
+  const [showPassword, setShowPassword] = useState(false)
+  const [searchParams] = useSearchParams()
+  const [countdown, setCountdown] = useState(30)
+  const [disableButton, setDisableButton] = useState(false)
 
-  const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [turnstileEnabled, setTurnstileEnabled] = useState(false);
-  const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState('');
+  const [showEmailVerification, setShowEmailVerification] = useState(false)
+  const [showInviteCode, setShowInviteCode] = useState(false)
+  const [turnstileEnabled, setTurnstileEnabled] = useState(false)
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
 
-  const [strength, setStrength] = useState(0);
-  const [level, setLevel] = useState();
+  const [strength, setStrength] = useState(0)
+  const [level, setLevel] = useState()
 
   const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
+    setShowPassword(!showPassword)
+  }
 
   const handleMouseDownPassword = (event) => {
-    event.preventDefault();
-  };
+    event.preventDefault()
+  }
 
   const changePassword = (value) => {
-    const temp = strengthIndicator(value);
-    setStrength(temp);
-    setLevel(strengthColor(temp));
-  };
+    const temp = strengthIndicator(value)
+    setStrength(temp)
+    setLevel(strengthColor(temp))
+  }
 
-  const handleSendCode = async (email) => {
+  const handleSendCode = async(email) => {
     if (email === '') {
-      showError(t('registerForm.enterEmail'));
-      return;
+      showError(t('registerForm.enterEmail'))
+      return
     }
     if (turnstileEnabled && turnstileToken === '') {
-      showError(t('registerForm.turnstileError'));
-      return;
+      showError(t('registerForm.turnstileError'))
+      return
     }
-    setDisableButton(true);
-    const { success, message } = await sendVerificationCode(email, turnstileToken);
+    setDisableButton(true)
+    const { success, message } = await sendVerificationCode(email, turnstileToken)
     if (!success) {
-      showError(message);
-      setDisableButton(false);
-      return;
+      showError(message)
+      setDisableButton(false)
+
     }
-  };
+  }
   useEffect(() => {
-    let affCode = searchParams.get('aff');
+    let affCode = searchParams.get('aff')
     if (affCode) {
-      localStorage.setItem('aff', affCode);
+      localStorage.setItem('aff', affCode)
     }
 
-    setShowEmailVerification(siteInfo.email_verification);
+    setShowEmailVerification(siteInfo.email_verification)
+    setShowInviteCode(siteInfo.invite_code_register)
     if (siteInfo.turnstile_check) {
-      setTurnstileEnabled(true);
-      setTurnstileSiteKey(siteInfo.turnstile_site_key);
+      setTurnstileEnabled(true)
+      setTurnstileSiteKey(siteInfo.turnstile_site_key)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteInfo]);
+  }, [siteInfo])
 
   useEffect(() => {
-    let countdownInterval = null;
+    let countdownInterval = null
     if (disableButton && countdown > 0) {
       countdownInterval = setInterval(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
+        setCountdown(countdown - 1)
+      }, 1000)
     } else if (countdown === 0) {
-      setDisableButton(false);
-      setCountdown(30);
+      setDisableButton(false)
+      setCountdown(30)
     }
-    return () => clearInterval(countdownInterval); // Clean up on unmount
-  }, [disableButton, countdown]);
+    return () => clearInterval(countdownInterval) // Clean up on unmount
+  }, [disableButton, countdown])
 
   return (
     <>
@@ -121,6 +123,7 @@ const RegisterForm = ({ ...others }) => {
           confirmPassword: '',
           email: showEmailVerification ? '' : undefined,
           verification_code: showEmailVerification ? '' : undefined,
+          invite_code: showInviteCode ? '' : undefined,
           submit: null
         }}
         validationSchema={Yup.object().shape({
@@ -134,30 +137,35 @@ const RegisterForm = ({ ...others }) => {
             : Yup.mixed(),
           verification_code: showEmailVerification
             ? Yup.string().max(255).required(t('registerForm.verificationCodeRequired'))
+            : Yup.mixed(),
+          invite_code: showInviteCode
+            ? Yup.string().max(255).required(t('registerForm.inviteCodeRequired'))
             : Yup.mixed()
         })}
-        onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
+        onSubmit={async(values, { setErrors, setStatus, setSubmitting }) => {
           if (turnstileEnabled && turnstileToken === '') {
-            showInfo(t('registerForm.verificationInfo'));
-            setSubmitting(false);
-            return;
+            showInfo(t('registerForm.verificationInfo'))
+            setSubmitting(false)
+            return
           }
 
-          const { success, message } = await register(values, turnstileToken);
+          const { success, message } = await register(values, turnstileToken)
           if (success) {
-            setStatus({ success: true });
+            setStatus({ success: true })
           } else {
-            setStatus({ success: false });
+            setStatus({ success: false })
             if (message) {
-              setErrors({ submit: message });
+              setErrors({ submit: message })
             }
           }
         }}
       >
         {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
           <form noValidate onSubmit={handleSubmit} {...others}>
-            <FormControl fullWidth error={Boolean(touched.username && errors.username)} sx={{ ...theme.typography.customInput }}>
-              <InputLabel htmlFor="outlined-adornment-username-register">{t('registerForm.usernameRequired')}</InputLabel>
+            <FormControl fullWidth error={Boolean(touched.username && errors.username)}
+                         sx={{ ...theme.typography.customInput }}>
+              <InputLabel
+                htmlFor="outlined-adornment-username-register">{t('registerForm.usernameRequired')}</InputLabel>
               <OutlinedInput
                 id="outlined-adornment-username-register"
                 type="text"
@@ -174,8 +182,10 @@ const RegisterForm = ({ ...others }) => {
               )}
             </FormControl>
 
-            <FormControl fullWidth error={Boolean(touched.password && errors.password)} sx={{ ...theme.typography.customInput }}>
-              <InputLabel htmlFor="outlined-adornment-password-register">{t('registerForm.passwordRequired')}</InputLabel>
+            <FormControl fullWidth error={Boolean(touched.password && errors.password)}
+                         sx={{ ...theme.typography.customInput }}>
+              <InputLabel
+                htmlFor="outlined-adornment-password-register">{t('registerForm.passwordRequired')}</InputLabel>
               <OutlinedInput
                 id="outlined-adornment-password-register"
                 type={showPassword ? 'text' : 'password'}
@@ -184,8 +194,8 @@ const RegisterForm = ({ ...others }) => {
                 label="Password"
                 onBlur={handleBlur}
                 onChange={(e) => {
-                  handleChange(e);
-                  changePassword(e.target.value);
+                  handleChange(e)
+                  changePassword(e.target.value)
                 }}
                 endAdornment={
                   <InputAdornment position="end">
@@ -197,7 +207,7 @@ const RegisterForm = ({ ...others }) => {
                       size="large"
                       color={'primary'}
                     >
-                      {showPassword ? <Visibility /> : <VisibilityOff />}
+                      {showPassword ? <Visibility/> : <VisibilityOff/>}
                     </IconButton>
                   </InputAdornment>
                 }
@@ -214,7 +224,8 @@ const RegisterForm = ({ ...others }) => {
               error={Boolean(touched.confirmPassword && errors.confirmPassword)}
               sx={{ ...theme.typography.customInput }}
             >
-              <InputLabel htmlFor="outlined-adornment-confirm-password-register">{t('registerForm.confirmPasswordRequired')}</InputLabel>
+              <InputLabel
+                htmlFor="outlined-adornment-confirm-password-register">{t('registerForm.confirmPasswordRequired')}</InputLabel>
               <OutlinedInput
                 id="outlined-adornment-confirm-password-register"
                 type={showPassword ? 'text' : 'password'}
@@ -237,7 +248,8 @@ const RegisterForm = ({ ...others }) => {
                 <Box sx={{ mb: 2 }}>
                   <Grid container spacing={2} alignItems="center">
                     <Grid item>
-                      <Box style={{ backgroundColor: level?.color }} sx={{ width: 85, height: 8, borderRadius: '7px' }} />
+                      <Box style={{ backgroundColor: level?.color }}
+                           sx={{ width: 85, height: 8, borderRadius: '7px' }}/>
                     </Grid>
                     <Grid item>
                       <Typography variant="subtitle1" fontSize="0.75rem">
@@ -251,7 +263,8 @@ const RegisterForm = ({ ...others }) => {
 
             {showEmailVerification && (
               <>
-                <FormControl fullWidth error={Boolean(touched.email && errors.email)} sx={{ ...theme.typography.customInput }}>
+                <FormControl fullWidth error={Boolean(touched.email && errors.email)}
+                             sx={{ ...theme.typography.customInput }}>
                   <InputLabel htmlFor="outlined-adornment-email-register">Email</InputLabel>
                   <OutlinedInput
                     id="outlined-adornment-email-register"
@@ -306,6 +319,30 @@ const RegisterForm = ({ ...others }) => {
               </>
             )}
 
+            {showInviteCode && (
+              <FormControl
+                fullWidth
+                error={Boolean(touched.invite_code && errors.invite_code)}
+                sx={{ ...theme.typography.customInput }}
+              >
+                <InputLabel htmlFor="outlined-adornment-invite-code-register">邀请码</InputLabel>
+                <OutlinedInput
+                  id="outlined-adornment-invite-code-register"
+                  type="text"
+                  value={values.invite_code}
+                  name="invite_code"
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  inputProps={{}}
+                />
+                {touched.invite_code && errors.invite_code && (
+                  <FormHelperText error id="standard-weight-helper-text-invite-code-register">
+                    {errors.invite_code}
+                  </FormHelperText>
+                )}
+              </FormControl>
+            )}
+
             {errors.submit && (
               <Box sx={{ mt: 3 }}>
                 <FormHelperText error>{errors.submit}</FormHelperText>
@@ -315,7 +352,7 @@ const RegisterForm = ({ ...others }) => {
               <Turnstile
                 sitekey={turnstileSiteKey}
                 onVerify={(token) => {
-                  setTurnstileToken(token);
+                  setTurnstileToken(token)
                 }}
               />
             ) : (
@@ -324,8 +361,17 @@ const RegisterForm = ({ ...others }) => {
 
             <Box sx={{ mt: 2 }}>
               <AnimateButton>
-                <Button disableElevation disabled={isSubmitting} fullWidth size="large" type="submit" variant="contained" color="primary">
-                  {t('menu.signup')}
+                <Button
+                  disableElevation
+                  disabled={isSubmitting}
+                  fullWidth
+                  size="large"
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  startIcon={isSubmitting ? <CircularProgress size={20} color="inherit"/> : null}
+                >
+                  {isSubmitting ? t('registerForm.registering') : t('menu.signup')}
                 </Button>
               </AnimateButton>
             </Box>
@@ -333,7 +379,7 @@ const RegisterForm = ({ ...others }) => {
         )}
       </Formik>
     </>
-  );
-};
+  )
+}
 
-export default RegisterForm;
+export default RegisterForm
