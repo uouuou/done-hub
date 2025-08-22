@@ -17,17 +17,18 @@ import (
 )
 
 type InviteCode struct {
-	ID          int    `json:"id"`
-	Code        string `json:"code" gorm:"type:varchar(32);uniqueIndex;not null"`        // 唯一索引：用于邀请码验证和查找
-	MaxUses     int    `json:"max_uses" gorm:"default:1;not null"`                       // 可使用次数
-	UsedCount   int    `json:"used_count" gorm:"default:0;not null"`                     // 已使用次数
-	Status      int    `json:"status" gorm:"default:1;not null;index:idx_status_time"`   // 状态：1启用，2禁用
-	StartsAt    int64  `json:"starts_at" gorm:"bigint;default:0;index:idx_status_time"`  // 生效开始时间戳，0表示立即生效
-	ExpiresAt   int64  `json:"expires_at" gorm:"bigint;default:0;index:idx_status_time"` // 生效结束时间戳，0表示永不过期
-	CreatedTime int64  `json:"created_time" gorm:"bigint;not null;index"`                // 创建时间，用于排序
-	UpdatedTime int64  `json:"updated_time" gorm:"bigint;not null"`                      // 更新时间
-	CreatedBy   int    `json:"created_by" gorm:"not null"`                               // 创建者ID
-	Name        string `json:"name" gorm:"type:varchar(100);default:'';index"`           // 邀请码名称，用于搜索
+	ID          int            `json:"id"`
+	Name        string         `json:"name" gorm:"type:varchar(100);default:'';index:idx_name_deleted"`             // 邀请码名称，用于搜索
+	Code        string         `json:"code" gorm:"type:varchar(32);not null;index:idx_code_deleted_status"`         // 邀请码
+	MaxUses     int            `json:"max_uses" gorm:"default:0;not null"`                                          // 可使用次数，0表示无限制
+	UsedCount   int            `json:"used_count" gorm:"default:0;not null"`                                        // 已使用次数
+	Status      int            `json:"status" gorm:"default:1;not null;index:idx_code_deleted_status"`              // 状态：1启用，2禁用
+	StartsAt    int64          `json:"starts_at" gorm:"bigint;default:0"`                                           // 生效开始时间戳，0表示立即生效
+	ExpiresAt   int64          `json:"expires_at" gorm:"bigint;default:0"`                                          // 生效结束时间戳，0表示永不过期
+	CreatedTime int64          `json:"created_time" gorm:"bigint;not null;index:idx_deleted_created"`               // 创建时间，用于排序
+	UpdatedTime int64          `json:"updated_time" gorm:"bigint;not null"`                                         // 更新时间
+	CreatedBy   int            `json:"created_by" gorm:"not null"`                                                  // 创建者ID
+	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index:idx_code_deleted_status,idx_deleted_created,idx_name_deleted"` // 逻辑删除
 }
 
 const (
@@ -52,11 +53,6 @@ func InitInviteCodeLock() {
 			logger.SysLog("invite code lock initialized with memory lock")
 		}
 	})
-}
-
-// 内部初始化函数（保持向后兼容）
-func initRedsync() {
-	InitInviteCodeLock()
 }
 
 // LockInviteCode 对邀请码加锁
@@ -90,7 +86,6 @@ func AcquireInviteCodeLock(code string) (*redsync.Mutex, error) {
 		return nil, errors.New("Redis not enabled")
 	}
 
-	initRedsync()
 	if redsyncInstance == nil {
 		return nil, errors.New("redsync not initialized")
 	}
@@ -145,24 +140,25 @@ func GetInviteCodesList(params *InviteCodeSearchParams) (*DataResult[InviteCode]
 		db = db.Where("status = ?", params.Status)
 	}
 
-	// 生效时间范围过滤 - 查询时间段有交集的邀请码，使用索引优化
+	// 生效时间范围过滤 - 查询生效期与指定时间区间有交集的邀请码
 	if params.StartsAtFrom > 0 && params.StartsAtTo > 0 {
 		// 验证时间范围的合理性
 		if params.StartsAtFrom >= params.StartsAtTo {
 			return nil, errors.New("开始时间必须小于结束时间")
 		}
-		// 两个时间段有交集的条件：
-		// 邀请码的结束时间 >= 查询开始时间 AND 邀请码的开始时间 <= 查询结束时间
+		// 两个时间区间有交集的条件：
+		// 查询开始时间 <= 邀请码结束时间 AND 查询结束时间 >= 邀请码开始时间
+		// 特殊处理：starts_at=0表示立即生效，expires_at=0表示永不过期
 		db = db.Where(
-			"((expires_at = 0 OR expires_at >= ?) AND (starts_at = 0 OR starts_at <= ?))",
-			params.StartsAtFrom, params.StartsAtTo,
+			"(? <= CASE WHEN expires_at = 0 THEN ? ELSE expires_at END) AND (? >= CASE WHEN starts_at = 0 THEN 0 ELSE starts_at END)",
+			params.StartsAtFrom, params.StartsAtTo, params.StartsAtTo,
 		)
 	} else if params.StartsAtFrom > 0 {
 		// 只有开始时间：邀请码的结束时间 >= 查询开始时间
-		db = db.Where("(expires_at = 0 OR expires_at >= ?)", params.StartsAtFrom)
+		db = db.Where("expires_at = 0 OR expires_at >= ?", params.StartsAtFrom)
 	} else if params.StartsAtTo > 0 {
 		// 只有结束时间：邀请码的开始时间 <= 查询结束时间
-		db = db.Where("(starts_at = 0 OR starts_at <= ?)", params.StartsAtTo)
+		db = db.Where("starts_at = 0 OR starts_at <= ?", params.StartsAtTo)
 	}
 
 	return PaginateAndOrder[InviteCode](db, &params.PaginationParams, &inviteCodes, allowedInviteCodeOrderFields)
@@ -342,17 +338,6 @@ func UseInviteCodeWithTx(tx *gorm.DB, code string) error {
 	}
 
 	return tx.Save(&inviteCode).Error
-}
-
-// ValidateInviteCode 验证邀请码是否有效并使用（保持向后兼容）
-// 已废弃：建议使用 CheckInviteCode + UseInviteCode 的组合
-func ValidateInviteCode(code string) error {
-	// 先检查有效性
-	if err := CheckInviteCode(code); err != nil {
-		return err
-	}
-	// 再增加使用次数
-	return UseInviteCode(code)
 }
 
 func (inviteCode *InviteCode) Insert() error {

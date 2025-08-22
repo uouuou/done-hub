@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
-import { Button, Checkbox, IconButton, TableCell, TableRow, Tooltip } from '@mui/material'
+import { Box, Button, Checkbox, IconButton, TableCell, TableRow, Tooltip } from '@mui/material'
 import { Icon } from '@iconify/react'
 import Label from 'ui-component/Label'
 import TableSwitch from 'ui-component/Switch'
@@ -20,6 +20,7 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
   const [statusSwitch, setStatusSwitch] = useState(item.status)
   const [statusLoading, setStatusLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // 当item.status变化时，同步更新本地状态
   useEffect(() => {
@@ -36,11 +37,7 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
         : STATUS.ENABLED
 
       const res = await API.put(`/api/invite-code/${item.id}`, {
-        name: item.name,
-        max_uses: item.max_uses,
-        status: newStatus,
-        starts_at: item.starts_at,
-        expires_at: item.expires_at
+        status: newStatus
       })
 
       const { success, message } = res.data
@@ -58,6 +55,9 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
   }
 
   const handleDelete = async() => {
+    if (deleting) return
+
+    setDeleting(true)
     try {
       const res = await API.delete(`/api/invite-code/${item.id}`)
       const { success, message } = res.data
@@ -69,8 +69,10 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
       }
     } catch (error) {
       showError('删除失败')
+    } finally {
+      setDeleting(false)
+      setDeleteConfirm(false)
     }
-    setDeleteConfirm(false)
   }
 
   const handleCopyCode = () => {
@@ -93,14 +95,14 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
   return (
     <>
       <TableRow tabIndex={item.id}>
-        <TableCell>
+        <TableCell align="center">
           <Checkbox
             checked={selected}
             onChange={onSelectRow}
           />
         </TableCell>
-        <TableCell>{item.id}</TableCell>
-        <TableCell>
+        <TableCell align="center">{item.id}</TableCell>
+        <TableCell align="center">
           <Label
             variant="soft"
             color="default"
@@ -118,14 +120,20 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
             {item.code}
           </Label>
         </TableCell>
-        <TableCell>{item.name || '-'}</TableCell>
-        <TableCell>
-          {item.used_count} / {item.max_uses === 0 ? '∞' : item.max_uses}
+        <TableCell align="center">{item.name || '-'}</TableCell>
+        <TableCell align="center">
+          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+            {item.used_count} / {item.max_uses === 0 ? (
+            <Icon icon="solar:infinity-bold-duotone" width={16} height={16} style={{ color: '#1976d2' }}/>
+          ) : (
+            item.max_uses
+          )}
+          </Box>
         </TableCell>
-        <TableCell>{formatDate(item.starts_at, '立即生效')}</TableCell>
-        <TableCell>{formatDate(item.expires_at, '永不过期')}</TableCell>
-        <TableCell>{formatDate(item.created_time)}</TableCell>
-        <TableCell>
+        <TableCell align="center">{formatDate(item.starts_at, '立即生效')}</TableCell>
+        <TableCell align="center">{formatDate(item.expires_at, '永不过期')}</TableCell>
+        <TableCell align="center">{formatDate(item.created_time)}</TableCell>
+        <TableCell align="center">
           <Tooltip title="点击切换状态">
             <TableSwitch
               id={`switch-${item.id}`}
@@ -135,7 +143,7 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
             />
           </Tooltip>
         </TableCell>
-        <TableCell>
+        <TableCell align="center">
           <IconButton onClick={() => handleOpenModal(item)} sx={{ color: 'rgb(99, 115, 129)' }}>
             <Icon icon="solar:pen-bold-duotone"/>
           </IconButton>
@@ -155,8 +163,9 @@ export default function InviteCodeTableRow({ item, selected, onSelectRow, onRefr
             variant="contained"
             color="error"
             onClick={handleDelete}
+            disabled={deleting}
           >
-            删除
+            {deleting ? '删除中...' : '删除'}
           </Button>
         }
       />

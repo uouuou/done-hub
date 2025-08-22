@@ -48,6 +48,7 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
   const [open, setOpen] = useState(null)
   const [menuItems, setMenuItems] = useState(null)
   const [openDelete, setOpenDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [statusSwitch, setStatusSwitch] = useState(item.status)
   const siteInfo = useSelector((state) => state.siteInfo)
   const chatLinks = getChatLinks()
@@ -90,8 +91,16 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
   }
 
   const handleDelete = async() => {
+    if (deleting) return
+
     handleCloseMenu()
-    await manageToken(item.id, 'delete', '')
+    setDeleting(true)
+    try {
+      await manageToken(item.id, 'delete', '')
+    } finally {
+      setDeleting(false)
+      setOpenDelete(false)
+    }
   }
 
   const actionItems = createMenu([
@@ -247,8 +256,9 @@ export default function TokensTableRow({ item, manageToken, handleOpenModal, set
             variant="contained"
             color="error"
             onClick={handleDelete}
+            disabled={deleting}
           >
-            {t('token_index.delete')}
+            {deleting ? '删除中...' : t('token_index.delete')}
           </Button>
         }
       />

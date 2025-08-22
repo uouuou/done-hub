@@ -245,12 +245,17 @@ func Register(c *gin.Context) {
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
-		Username:       user.Username,
-		Password:       user.Password,
-		DisplayName:    user.Username,
-		InviterId:      inviterId,
-		UsedInviteCode: user.InviteCode, // 保存使用的邀请码
+		Username:    user.Username,
+		Password:    user.Password,
+		DisplayName: user.Username,
+		InviterId:   inviterId,
 	}
+
+	// 只有启用邀请码注册时才保存使用的邀请码
+	if config.InviteCodeRegisterEnabled && user.InviteCode != "" {
+		cleanUser.UsedInviteCode = user.InviteCode
+	}
+
 	if config.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
 	}
