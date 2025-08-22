@@ -365,7 +365,7 @@ const InviteCodeSetting = () => {
   const getTimeValidationError = () => {
     if (formData.starts_at && formData.expires_at) {
       if (formData.starts_at.isAfter(formData.expires_at) || formData.starts_at.isSame(formData.expires_at)) {
-        return '生效结束时间必须大于生效起始时间'
+        return '过期时间必须大于生效时间'
       }
     }
     return null
@@ -429,7 +429,7 @@ const InviteCodeSetting = () => {
 
     // 时间验证
     if (formData.starts_at && formData.expires_at && (formData.starts_at.isAfter(formData.expires_at) || formData.starts_at.isSame(formData.expires_at))) {
-      showError('生效结束时间必须大于开始时间')
+      showError('过期时间必须大于生效时间')
       return false
     }
 
@@ -847,7 +847,7 @@ const InviteCodeSetting = () => {
                 />
               )}
               <DateTimePicker
-                label="生效起始时间"
+                label="生效时间"
                 value={formData.starts_at}
                 onChange={(newValue) => {
                   // 如果结束时间已设置且小于新的开始时间，则清空结束时间
@@ -870,7 +870,7 @@ const InviteCodeSetting = () => {
                 }}
               />
               <DateTimePicker
-                label="生效结束时间"
+                label="过期时间"
                 value={formData.expires_at}
                 onChange={(newValue) => {
                   setFormData({ ...formData, expires_at: newValue })
