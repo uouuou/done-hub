@@ -1,16 +1,18 @@
 @echo off
-setlocal enabledelayedexpansion
 
 set NAME=done-hub
 set DISTDIR=dist
 set WEBDIR=web
-SET CGO_ENABLED=0
-SET GOOS=linux
-SET GOARCH=amd64
+set CGO_ENABLED=0
+set GOOS=linux
+set GOARCH=amd64
 
-rem 获取版本信息，如果git describe失败则设置为dev
+rem Get version info, set to dev if git describe fails
 for /f "delims=" %%a in ('git describe --tags 2^>nul') do set VERSION=%%a
 if "%VERSION%"=="" set VERSION=dev
+
+echo Current version:
+echo %VERSION%
 
 if "%1"=="" (
     call :all
@@ -49,14 +51,14 @@ exit /b
 :one-api
 call :web
 
-echo now the CGO_ENABLED:
- go env CGO_ENABLED
+echo Current CGO_ENABLED:
+go env CGO_ENABLED
 
-echo now the GOOS:
- go env GOOS
+echo Current GOOS:
+go env GOOS
 
-echo now the GOARCH:
- go env GOARCH
+echo Current GOARCH:
+go env GOARCH
 
 echo Building Go binary...
 if not exist %DISTDIR% mkdir %DISTDIR%
@@ -72,14 +74,14 @@ exit /b
 
 :app
 
-echo now the CGO_ENABLED:
- go env CGO_ENABLED
+echo Current CGO_ENABLED:
+go env CGO_ENABLED
 
-echo now the GOOS:
- go env GOOS
+echo Current GOOS:
+go env GOOS
 
-echo now the GOARCH:
- go env GOARCH
+echo Current GOARCH:
+go env GOARCH
 
 echo Building Go binary...
 if not exist %DISTDIR% mkdir %DISTDIR%
@@ -114,6 +116,6 @@ echo Targets:
 echo   all      Build everything (default)
 echo   web      Build web resources
 echo   one-api  Build Go binary (requires built web resources)
-echo   one-api  Build Go binary only
+echo   app      Build Go binary only
 echo   clean    Remove build artifacts
 exit /b
