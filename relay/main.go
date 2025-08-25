@@ -11,6 +11,7 @@ import (
 	"done-hub/relay/relay_util"
 	"done-hub/types"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,7 +29,11 @@ func Relay(c *gin.Context) {
 	}
 
 	// Apply pre-mapping before setRequest to ensure request body modifications take effect
-	applyPreMappingBeforeRequest(c)
+	if err := applyPreMappingBeforeRequest(c); err != nil {
+		openaiErr := common.StringErrorWrapperLocal(err.Error(), "one_hub_error", http.StatusBadRequest)
+		relay.HandleJsonError(openaiErr)
+		return
+	}
 
 	if err := relay.setRequest(); err != nil {
 		openaiErr := common.StringErrorWrapperLocal(err.Error(), "one_hub_error", http.StatusBadRequest)
@@ -174,16 +179,16 @@ func shouldCooldowns(c *gin.Context, channel *model.Channel, apiErr *types.OpenA
 }
 
 // applies pre-mapping before setRequest to ensure modifications take effect
-func applyPreMappingBeforeRequest(c *gin.Context) {
+func applyPreMappingBeforeRequest(c *gin.Context) error {
 	// check if this is a chat completion request that needs pre-mapping
 	path := c.Request.URL.Path
 	if !(strings.HasPrefix(path, "/v1/chat/completions") || strings.HasPrefix(path, "/v1/completions")) {
-		return
+		return errors.New("not a chat completion request")
 	}
 
 	bodyBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		return
+		return err
 	}
 	c.Request.Body.Close()
 
@@ -197,27 +202,27 @@ func applyPreMappingBeforeRequest(c *gin.Context) {
 		Model string `json:"model"`
 	}
 	if err := json.Unmarshal(bodyBytes, &requestBody); err != nil || requestBody.Model == "" {
-		return
+		return errors.New("invalid request body")
 	}
 
 	provider, _, err := GetProvider(c, requestBody.Model)
 	if err != nil {
-		return
+		return err
 	}
 
 	customParams, err := provider.CustomParameterHandler()
 	if err != nil || customParams == nil {
-		return
+		return errors.New("invalid custom parameters")
 	}
 
 	preAdd, exists := customParams["pre_add"]
 	if !exists || preAdd != true {
-		return
+		return errors.New("custom parameters pre_add is not true")
 	}
 
 	var requestMap map[string]interface{}
 	if err := json.Unmarshal(bodyBytes, &requestMap); err != nil {
-		return
+		return err
 	}
 
 	// Apply custom parameter merging
@@ -227,4 +232,5 @@ func applyPreMappingBeforeRequest(c *gin.Context) {
 	if modifiedBodyBytes, err := json.Marshal(modifiedRequestMap); err == nil {
 		finalBodyBytes = modifiedBodyBytes
 	}
+	return nil
 }

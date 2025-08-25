@@ -345,7 +345,20 @@
     "heartbeat": "心跳设置(实验性)",
     "heartbeatTip": "心跳设置是指当在请求时，如果长时间没有返回数据，您的客户端可能会因为超时机制而断开连接。为了保持TCP连接不会因超时中断，您可以开启心跳设置，当请求超出您设置的开始时间，且无响应时，我们将会每隔5秒发送一次心跳请求(非流式请求返回空行，流式返回::PING)，以保持连接。注意：如果您在使用中转程序时，请不要开启该设置，可能会出现不可预知的问题。",
     "heartbeatTimeout": "心跳开始时间(单位：秒)",
-    "heartbeatTimeoutHelperText": "最小值为30秒，最大值为90秒"
+    "heartbeatTimeoutHelperText": "最小值为30秒，最大值为90秒",
+    "modelRestriction": "模型限制",
+    "ipRestriction": "IP限制",
+    "modelRestrictionTip": "选择此令牌可以使用的模型，留空则允许使用所有可用模型",
+    "ipRestrictionTip": "设置此令牌可以访问的IP地址或子网范围",
+    "subnetPlaceholder": "例如: 192.168.1.100 或 192.168.1.0/24",
+    "subnetHelperText": "支持单个IP地址（如：192.168.1.100）或CIDR格式的子网（如：192.168.1.0/24）",
+    "selectModels": "选择模型",
+    "selectModelsPlaceholder": "选择允许使用的模型",
+    "noModelRestriction": "无限制",
+    "noIpRestriction": "无限制",
+    "modelCount": "个模型",
+    "ipRestricted": "IP限制",
+    "allowedModels": "允许使用的模型: "
   },
   "invoice_index": {
     "invoice": "月度账单",

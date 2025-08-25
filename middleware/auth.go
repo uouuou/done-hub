@@ -4,8 +4,10 @@ import (
 	"done-hub/common/config"
 	"done-hub/common/utils"
 	"done-hub/model"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-contrib/sessions"
@@ -134,7 +136,20 @@ func tokenAuth(c *gin.Context, key string) {
 	c.Set("token_id", token.Id)
 	c.Set("token_name", token.Name)
 	c.Set("token_group", token.Group)
-	c.Set("token_setting", utils.GetPointer(token.Setting.Data()))
+	// 直接将设置数据序列化为JSON字符串传递
+	settingData := token.Setting.Data()
+	settingJSON, _ := json.Marshal(settingData)
+	c.Set("token_setting", string(settingJSON))
+
+	// 验证subnet限制
+	setting := token.Setting.Data()
+	if setting.Subnet != "" {
+		clientIP := c.ClientIP()
+		if !isIPInSubnet(clientIP, setting.Subnet) {
+			abortWithMessage(c, http.StatusForbidden, "访问IP不在允许的子网范围内")
+			return
+		}
+	}
 	if len(parts) > 1 {
 		if model.IsAdmin(token.UserId) {
 			if strings.HasPrefix(parts[1], "!") {
@@ -239,4 +254,85 @@ func SpecifiedChannel() func(c *gin.Context) {
 		}
 		c.Next()
 	}
+}
+
+func OptionalOpenaiAuth() func(c *gin.Context) {
+	return func(c *gin.Context) {
+		isWebSocket := c.GetHeader("Upgrade") == "websocket"
+		key := c.Request.Header.Get("Authorization")
+
+		if isWebSocket && key == "" {
+			protocols := c.Request.Header["Sec-Websocket-Protocol"]
+			if len(protocols) > 0 {
+				protocolList := strings.Split(protocols[0], ",")
+				for _, protocol := range protocolList {
+					protocol = strings.TrimSpace(protocol)
+					if strings.HasPrefix(protocol, "openai-insecure-api-key.") {
+						key = strings.TrimPrefix(protocol, "openai-insecure-api-key.")
+						break
+					}
+				}
+			}
+		}
+
+		// 如果没有提供token，设置默认值并继续
+		if key == "" {
+			c.Set("id", 0)
+			c.Set("token_id", 0)
+			c.Set("token_name", "")
+			c.Set("token_group", "default")
+			c.Set("token_setting", nil)
+			c.Next()
+			return
+		}
+
+		// 如果有token，进行正常验证
+		tokenAuth(c, key)
+	}
+}
+
+// isIPInSubnet 检查IP地址是否在指定的子网内
+func isIPInSubnet(ip, subnet string) bool {
+	// 如果是单个IP地址，直接比较
+	if !strings.Contains(subnet, "/") {
+		return ip == subnet
+	}
+
+	// 如果是CIDR格式，进行子网匹配
+	ipParts := strings.Split(subnet, "/")
+	if len(ipParts) != 2 {
+		return false
+	}
+
+	networkIP := ipParts[0]
+	maskLength, err := strconv.Atoi(ipParts[1])
+	if err != nil || maskLength < 0 || maskLength > 32 {
+		return false
+	}
+
+	// 简单的CIDR匹配逻辑
+	// 将IP地址转换为32位整数进行比较
+	ipInt := ipToInt(ip)
+	networkInt := ipToInt(networkIP)
+	mask := uint32((0xFFFFFFFF << (32 - maskLength)) & 0xFFFFFFFF)
+
+	return (ipInt & mask) == (networkInt & mask)
+}
+
+// ipToInt 将IPv4地址转换为32位整数
+func ipToInt(ip string) uint32 {
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return 0
+	}
+
+	var result uint32
+	for i, part := range parts {
+		num, err := strconv.Atoi(part)
+		if err != nil || num < 0 || num > 255 {
+			return 0
+		}
+		result |= uint32(num) << (24 - i*8)
+	}
+	return result
 }

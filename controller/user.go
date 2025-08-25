@@ -25,7 +25,7 @@ import (
 
 type LoginRequest struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
+	Password string `json:"Password"`
 }
 
 // getFriendlyValidationMessage 将验证错误转换为友好的中文提示

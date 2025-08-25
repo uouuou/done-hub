@@ -10,6 +10,7 @@ import (
 	"done-hub/common/utils"
 	"errors"
 	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -23,21 +24,20 @@ var (
 )
 
 type Token struct {
-	Id             int            `json:"id"`
-	UserId         int            `json:"user_id"`
-	Key            string         `json:"key" gorm:"type:varchar(59);uniqueIndex"`
-	Status         int            `json:"status" gorm:"default:1"`
-	Name           string         `json:"name" gorm:"index" `
-	CreatedTime    int64          `json:"created_time" gorm:"bigint"`
-	AccessedTime   int64          `json:"accessed_time" gorm:"bigint"`
-	ExpiredTime    int64          `json:"expired_time" gorm:"bigint;default:-1"` // -1 means never expired
-	RemainQuota    int            `json:"remain_quota" gorm:"default:0"`
-	UnlimitedQuota bool           `json:"unlimited_quota" gorm:"default:false"`
-	UsedQuota      int            `json:"used_quota" gorm:"default:0"` // used quota
-	Group          string         `json:"group" gorm:"default:''"`
-	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
-
-	Setting database.JSONType[TokenSetting] `json:"setting" form:"setting" gorm:"type:json"`
+	Id             int                             `json:"id"`
+	UserId         int                             `json:"user_id"`
+	Key            string                          `json:"key" gorm:"type:varchar(59);uniqueIndex"`
+	Status         int                             `json:"status" gorm:"default:1"`
+	Name           string                          `json:"name" gorm:"index" `
+	CreatedTime    int64                           `json:"created_time" gorm:"bigint"`
+	AccessedTime   int64                           `json:"accessed_time" gorm:"bigint"`
+	ExpiredTime    int64                           `json:"expired_time" gorm:"bigint;default:-1"` // -1 means never expired
+	RemainQuota    int                             `json:"remain_quota" gorm:"default:0"`
+	UnlimitedQuota bool                            `json:"unlimited_quota" gorm:"default:false"`
+	UsedQuota      int                             `json:"used_quota" gorm:"default:0"` // used quota
+	Group          string                          `json:"group" gorm:"default:''"`
+	DeletedAt      gorm.DeletedAt                  `json:"-" gorm:"index"`
+	Setting        database.JSONType[TokenSetting] `json:"setting" form:"setting" gorm:"type:json"`
 }
 
 var allowedTokenOrderFields = map[string]bool{
@@ -63,6 +63,8 @@ func (token *Token) AfterCreate(tx *gorm.DB) (err error) {
 
 type TokenSetting struct {
 	Heartbeat HeartbeatSetting `json:"heartbeat,omitempty"`
+	Models    []string         `json:"models,omitempty"`
+	Subnet    string           `json:"subnet,omitempty"`
 }
 
 type HeartbeatSetting struct {

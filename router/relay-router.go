@@ -25,7 +25,7 @@ func SetRelayRouter(router *gin.Engine) {
 
 func setOpenAIRouter(router *gin.Engine) {
 	modelsRouter := router.Group("/v1/models")
-	modelsRouter.Use(middleware.OpenaiAuth(), middleware.Distribute())
+	modelsRouter.Use(middleware.OptionalOpenaiAuth(), middleware.Distribute())
 	{
 		modelsRouter.GET("", relay.ListModelsByToken)
 		modelsRouter.GET("/:model", relay.RetrieveModel)

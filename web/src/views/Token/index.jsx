@@ -246,6 +246,8 @@ export default function Token() {
                 headLabel={[
                   { id: 'name', label: t('token_index.name'), disableSort: false },
                   { id: 'group', label: t('token_index.userGroup'), disableSort: false },
+                  { id: 'models', label: t('token_index.modelRestriction'), disableSort: false },
+                  { id: 'subnet', label: t('token_index.ipRestriction'), disableSort: false },
                   { id: 'status', label: t('token_index.status'), disableSort: false },
                   { id: 'used_quota', label: t('token_index.usedQuota'), disableSort: false },
                   { id: 'remain_quota', label: t('token_index.remainingQuota'), disableSort: false },

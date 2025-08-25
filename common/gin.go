@@ -9,11 +9,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
-
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 func UnmarshalBodyReusable(c *gin.Context, v any) error {
