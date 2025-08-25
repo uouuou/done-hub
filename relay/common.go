@@ -85,7 +85,6 @@ func GetProvider(c *gin.Context, modelName string) (provider providersBase.Provi
 			return
 		}
 	}
-
 	matchedModelName, err := model.ChannelGroup.GetMatchedModelName(groupName, modelName)
 	if err != nil {
 		fail = err

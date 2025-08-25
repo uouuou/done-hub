@@ -96,7 +96,7 @@ func init() {
 	}
 }
 
-// 获取供应商
+// GetProvider 获取供应商
 func GetProvider(channel *model.Channel, c *gin.Context) base.ProviderInterface {
 	factory, ok := providerFactories[channel.Type]
 	var provider base.ProviderInterface
