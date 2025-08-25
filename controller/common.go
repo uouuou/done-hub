@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 )
 
 var disableGroup singleflight.Group
@@ -120,4 +122,48 @@ func RelayNotFound(c *gin.Context) {
 	c.JSON(http.StatusNotFound, gin.H{
 		"error": err,
 	})
+}
+
+// validateAndUseInviteCodeForOAuth 为第三方登录验证和使用邀请码
+// 返回值：inviteCode string, error
+func validateAndUseInviteCodeForOAuth(c *gin.Context, tx *gorm.DB) (string, error) {
+	// 如果未启用邀请码注册，直接返回
+	if !config.InviteCodeRegisterEnabled {
+		return "", nil
+	}
+
+	session := sessions.Default(c)
+	inviteCodeInterface := session.Get("oauth_invite_code")
+	if inviteCodeInterface == nil {
+		return "", fmt.Errorf("管理员开启了邀请码注册，请提供邀请码")
+	}
+
+	// 安全的类型断言
+	inviteCode, ok := inviteCodeInterface.(string)
+	if !ok {
+		return "", fmt.Errorf("邀请码格式错误")
+	}
+
+	if inviteCode == "" {
+		return "", fmt.Errorf("邀请码不能为空")
+	}
+
+	// 验证邀请码
+	if err := model.CheckInviteCode(inviteCode); err != nil {
+		return "", err
+	}
+
+	// 在事务中使用邀请码
+	if err := model.UseInviteCodeWithTx(tx, inviteCode); err != nil {
+		return "", err
+	}
+
+	// 清除会话中的邀请码信息
+	session.Delete("oauth_invite_code")
+	if err := session.Save(); err != nil {
+		// 记录日志但不影响主流程
+		logger.SysError("Failed to save session after clearing invite code: " + err.Error())
+	}
+
+	return inviteCode, nil
 }

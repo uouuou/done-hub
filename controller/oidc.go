@@ -197,16 +197,14 @@ func OIDCAuth(c *gin.Context) {
 		return
 	}
 
-	// 检测邀请码
+	// 检测推荐码
 	var inviterId int
 	affCode := c.Query("aff")
 	if affCode != "" {
 		inviterId, _ = model.GetUserIdByAffCode(affCode)
 	}
-	if inviterId > 0 {
-		user.InviterId = inviterId
-	}
-	// 填充用户信息并创建账户
+
+	// 填充用户信息
 	user.Username = userName.(string)
 	if email, ok := claims["email"]; ok && email != nil {
 		emailStr := email.(string)
@@ -232,7 +230,29 @@ func OIDCAuth(c *gin.Context) {
 	user.Role = config.RoleCommonUser
 	user.Status = config.UserStatusEnabled
 
-	if err := user.Insert(0); err != nil {
+	// 使用事务创建用户并处理邀请码
+	err = model.DB.Transaction(func(tx *gorm.DB) error {
+		// 验证和使用邀请码（如果启用）
+		usedInviteCode, err := validateAndUseInviteCodeForOAuth(c, tx)
+		if err != nil {
+			return err
+		}
+
+		// 设置邀请人ID（使用原有推荐码逻辑）
+		if inviterId > 0 {
+			user.InviterId = inviterId
+		}
+
+		// 设置使用的邀请码
+		if usedInviteCode != "" {
+			user.UsedInviteCode = usedInviteCode
+		}
+
+		// 在事务中创建用户
+		return user.InsertWithTx(tx, user.InviterId)
+	})
+
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": err.Error(),

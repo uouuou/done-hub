@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type LarkAppAccessTokenResponse struct {
@@ -201,7 +202,24 @@ func LarkOAuth(c *gin.Context) {
 			user.Role = config.RoleCommonUser
 			user.Status = config.UserStatusEnabled
 
-			if err := user.Insert(0); err != nil {
+			// 使用事务创建用户并处理邀请码
+			err := model.DB.Transaction(func(tx *gorm.DB) error {
+				// 验证和使用邀请码（如果启用）
+				usedInviteCode, err := validateAndUseInviteCodeForOAuth(c, tx)
+				if err != nil {
+					return err
+				}
+
+				// 设置使用的邀请码
+				if usedInviteCode != "" {
+					user.UsedInviteCode = usedInviteCode
+				}
+
+				// 在事务中创建用户
+				return user.InsertWithTx(tx, 0)
+			})
+
+			if err != nil {
 				c.JSON(http.StatusOK, gin.H{
 					"success": false,
 					"message": err.Error(),
