@@ -245,7 +245,7 @@
     "addUserGroupToChannels": "Add user group to {{count}} channels",
     "batchAddUserGroupSuccess": "Successfully added user group \"{{group}}\" to {{count}} channels",
     "batchAddModel": "Batch Add Model",
-    "batchAddModelTip": "Select channels and add models. Supports multiple models (comma-separated). If a channel already has a model, it will be skipped.",
+    "batchAddModelTip": "Select channels and add models. Supports inputting multiple models. If a channel already has a certain model, that model will be skipped.",
     "selectModelToAdd": "Select or input models to add",
     "pleaseSelectModel": "Please select or input models",
     "pleaseSelectChannelsForModel": "Please select at least one channel",

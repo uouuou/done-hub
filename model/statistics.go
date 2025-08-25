@@ -26,6 +26,9 @@ func GetUserModelStatisticsByPeriod(userId int, startTime, endTime string) (LogS
 		dateStr = "TO_CHAR(date, 'YYYY-MM-DD') as date"
 	} else if common.UsingSQLite {
 		dateStr = "strftime('%Y-%m-%d', date) as date"
+	} else {
+		// MySQL/TiDB - 显式格式化日期以确保兼容性
+		dateStr = "DATE_FORMAT(date, '%Y-%m-%d') as date"
 	}
 
 	err = DB.Raw(`
