@@ -212,12 +212,12 @@ func applyPreMappingBeforeRequest(c *gin.Context) error {
 
 	customParams, err := provider.CustomParameterHandler()
 	if err != nil || customParams == nil {
-		return nil
+		return err
 	}
 
 	preAdd, exists := customParams["pre_add"]
 	if !exists || preAdd != true {
-		return nil
+		return errors.New("pre_add is not true")
 	}
 
 	var requestMap map[string]interface{}
