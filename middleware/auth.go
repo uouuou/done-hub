@@ -256,41 +256,6 @@ func SpecifiedChannel() func(c *gin.Context) {
 	}
 }
 
-func OptionalOpenaiAuth() func(c *gin.Context) {
-	return func(c *gin.Context) {
-		isWebSocket := c.GetHeader("Upgrade") == "websocket"
-		key := c.Request.Header.Get("Authorization")
-
-		if isWebSocket && key == "" {
-			protocols := c.Request.Header["Sec-Websocket-Protocol"]
-			if len(protocols) > 0 {
-				protocolList := strings.Split(protocols[0], ",")
-				for _, protocol := range protocolList {
-					protocol = strings.TrimSpace(protocol)
-					if strings.HasPrefix(protocol, "openai-insecure-api-key.") {
-						key = strings.TrimPrefix(protocol, "openai-insecure-api-key.")
-						break
-					}
-				}
-			}
-		}
-
-		// 如果没有提供token，设置默认值并继续
-		if key == "" {
-			c.Set("id", 0)
-			c.Set("token_id", 0)
-			c.Set("token_name", "")
-			c.Set("token_group", "default")
-			c.Set("token_setting", nil)
-			c.Next()
-			return
-		}
-
-		// 如果有token，进行正常验证
-		tokenAuth(c, key)
-	}
-}
-
 // isIPInSubnet 检查IP地址是否在指定的子网内
 func isIPInSubnet(ip, subnet string) bool {
 	// 如果是单个IP地址，直接比较
