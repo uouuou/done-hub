@@ -226,7 +226,7 @@
     "addUserGroupToChannels": "为 {{count}} 个渠道添加用户分组",
     "batchAddUserGroupSuccess": "成功为 {{count}} 个渠道添加用户分组 \"{{group}}\"",
     "batchAddModel": "批量添加模型",
-    "batchAddModelTip": "选择渠道并添加模型。支持输入多个模型（逗号分隔）。如果渠道已有某个模型，将跳过该模型。",
+    "batchAddModelTip": "选择渠道并添加模型。支持输入多个模型。如果渠道已有某个模型，将跳过该模型。",
     "selectModelToAdd": "选择或输入要添加的模型",
     "pleaseSelectModel": "请选择或输入模型",
     "pleaseSelectChannelsForModel": "请选择至少一个渠道",
