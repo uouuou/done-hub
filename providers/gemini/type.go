@@ -275,6 +275,14 @@ func (candidate *GeminiChatCandidate) ToOpenAIStreamChoice(request *types.ChatCo
 		choice.Delta.ReasoningContent = strings.Join(reasoningContent, "\n")
 	}
 
+	// 处理 GroundingMetadata，转换为 OpenAI 格式的 Annotations
+	if candidate.GroundingMetadata != nil {
+		annotations := candidate.ConvertGroundingToAnnotations()
+		if len(annotations) > 0 {
+			choice.Delta.Annotations = annotations
+		}
+	}
+
 	if isTools {
 		choice.FinishReason = types.FinishReasonToolCalls
 	}
@@ -358,6 +366,14 @@ func (candidate *GeminiChatCandidate) ToOpenAIChoice(request *types.ChatCompleti
 
 	if len(images) > 0 {
 		choice.Message.Image = images
+	}
+
+	// 处理 GroundingMetadata，转换为 OpenAI 格式的 Annotations
+	if candidate.GroundingMetadata != nil {
+		annotations := candidate.ConvertGroundingToAnnotations()
+		if len(annotations) > 0 {
+			choice.Message.Annotations = annotations
+		}
 	}
 
 	if useTools {
@@ -493,12 +509,87 @@ type GeminiChatCandidate struct {
 	CitationMetadata      any                      `json:"citationMetadata,omitempty"`
 	TokenCount            int                      `json:"tokenCount,omitempty"`
 	GroundingAttributions []any                    `json:"groundingAttributions,omitempty"`
+	GroundingMetadata     *GeminiGroundingMetadata `json:"groundingMetadata,omitempty"`
 	AvgLogprobs           any                      `json:"avgLogprobs,omitempty"`
 }
 
 type GeminiChatSafetyRating struct {
 	Category    string `json:"category"`
 	Probability string `json:"probability"`
+}
+
+// GroundingMetadata 相关结构定义
+type GeminiGroundingMetadata struct {
+	SearchEntryPoint  *GeminiSearchEntryPoint  `json:"searchEntryPoint,omitempty"`
+	GroundingChunks   []GeminiGroundingChunk   `json:"groundingChunks,omitempty"`
+	GroundingSupports []GeminiGroundingSupport `json:"groundingSupports,omitempty"`
+	WebSearchQueries  []string                 `json:"webSearchQueries,omitempty"`
+}
+
+type GeminiSearchEntryPoint struct {
+	RenderedContent string `json:"renderedContent,omitempty"`
+}
+
+type GeminiGroundingChunk struct {
+	Web *GeminiWebChunk `json:"web,omitempty"`
+}
+
+type GeminiWebChunk struct {
+	Uri   string `json:"uri,omitempty"`
+	Title string `json:"title,omitempty"`
+}
+
+type GeminiGroundingSupport struct {
+	Segment               *GeminiGroundingSegment `json:"segment,omitempty"`
+	GroundingChunkIndices []int                   `json:"groundingChunkIndices,omitempty"`
+}
+
+type GeminiGroundingSegment struct {
+	StartIndex int    `json:"startIndex,omitempty"`
+	EndIndex   int    `json:"endIndex,omitempty"`
+	Text       string `json:"text,omitempty"`
+}
+
+// ConvertGroundingToAnnotations 将 Gemini GroundingMetadata 转换为 OpenAI Annotations 格式
+func (candidate *GeminiChatCandidate) ConvertGroundingToAnnotations() []types.Annotations {
+	if candidate.GroundingMetadata == nil || len(candidate.GroundingMetadata.GroundingSupports) == 0 {
+		return nil
+	}
+
+	var annotations []types.Annotations
+	// 使用 map 来去重，避免重复的引用
+	seenAnnotations := make(map[string]bool)
+
+	// 遍历 GroundingSupports，为每个支持的文本段创建引用
+	for _, support := range candidate.GroundingMetadata.GroundingSupports {
+		if support.Segment == nil || len(support.GroundingChunkIndices) == 0 {
+			continue
+		}
+
+		// 为每个引用的 chunk 创建 annotation
+		for _, chunkIndex := range support.GroundingChunkIndices {
+			if chunkIndex >= 0 && chunkIndex < len(candidate.GroundingMetadata.GroundingChunks) {
+				chunk := candidate.GroundingMetadata.GroundingChunks[chunkIndex]
+				if chunk.Web != nil && chunk.Web.Uri != "" {
+					// 创建唯一键来去重
+					key := fmt.Sprintf("%s_%d_%d", chunk.Web.Uri, support.Segment.StartIndex, support.Segment.EndIndex)
+					if !seenAnnotations[key] {
+						annotation := types.Annotations{
+							Type:       "url_citation",
+							Url:        chunk.Web.Uri,
+							Title:      chunk.Web.Title,
+							StartIndex: support.Segment.StartIndex,
+							EndIndex:   support.Segment.EndIndex,
+						}
+						annotations = append(annotations, annotation)
+						seenAnnotations[key] = true
+					}
+				}
+			}
+		}
+	}
+
+	return annotations
 }
 
 type GeminiChatPromptFeedback struct {

@@ -24,7 +24,10 @@ const UserProvider = ({ children }) => {
   useEffect(() => {
     // 只有在没有用户信息时才加载
     if (!account.user) {
-      loadUser();
+      // 静默加载用户信息，不显示错误
+      loadUser().catch(() => {
+        // 静默处理错误，避免在登录页面显示错误信息
+      });
       loadUserGroup();
     } else {
       // 如果已经有用户信息，直接设置为已加载

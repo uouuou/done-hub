@@ -40,6 +40,7 @@ _本项目是基于[one-hub](https://github.com/MartialBE/one-api)二次开发�
 - 支持`VertexAI`渠道下可配置多个`Region`, 每次请求随机选取`Region`
 - 支持`Google Gemini`渠道`/gemini`使用原生**生成视频请求**(`Veo`系列模型)
 - 支持`gemini-2.0-flash-preview-image-generation`文生图/图生图，并兼容`OpenAI`对话接口
+- 新增**邀请码设置**模块
 - 新增**批量添加渠道的用户分组功能**
 - 新增**空回复是否计费配置** （默认:计费）
 - 新增**分析功能-充值统计中的时间周期条件**

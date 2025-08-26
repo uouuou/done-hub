@@ -160,7 +160,10 @@ const useLogin = () => {
       }
       return null;
     } catch (err) {
-      console.error(err);
+      // 只在非401错误时打印错误信息
+      if (err.response?.status !== 401) {
+        console.error(err);
+      }
       return null;
     }
   }, [dispatch]);

@@ -80,9 +80,13 @@ func (r *relayImageGenerations) setGeminiRequest() error {
 		return err
 	}
 
-	// 转换为标准格式
+	// 验证instances数量
 	if len(geminiRequest.Instances) == 0 {
-		return errors.New("no instances provided")
+		return errors.New("instances is required")
+	}
+
+	if len(geminiRequest.Instances) > 1 {
+		return errors.New("only one instance is supported, multiple image generation is not allowed")
 	}
 
 	r.request = types.ImageRequest{

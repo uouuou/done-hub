@@ -123,10 +123,10 @@ func (p *GeminiProvider) getChatRequest(geminiRequest *GeminiChatRequest, isRela
 		body = geminiRequest
 	}
 
-	// 创建请求
-	req, err := p.Requester.NewRequest(http.MethodPost, fullRequestURL, p.Requester.WithBody(body), p.Requester.WithHeader(headers))
-	if err != nil {
-		return nil, common.ErrorWrapper(err, "new_request_failed", http.StatusInternalServerError)
+	// 使用BaseProvider的统一方法创建请求，支持自定义参数处理
+	req, errWithCode := p.NewRequestWithCustomParams(http.MethodPost, fullRequestURL, body, headers, geminiRequest.Model)
+	if errWithCode != nil {
+		return nil, errWithCode
 	}
 
 	return req, nil
