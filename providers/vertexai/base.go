@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"done-hub/common"
 	"done-hub/common/cache"
 	"done-hub/common/logger"
 	"done-hub/common/requester"
@@ -95,18 +96,37 @@ func (p *VertexAIProvider) GetFullRequestURL(modelName string, other string) str
 }
 
 func (p *VertexAIProvider) GetRequestHeaders() (headers map[string]string) {
+	headers, _ = p.getRequestHeadersInternal()
+	return headers
+}
+
+// getRequestHeadersInternal 内部方法，返回请求头和错误信息
+func (p *VertexAIProvider) getRequestHeadersInternal() (headers map[string]string, err error) {
 	headers = make(map[string]string)
 	p.CommonRequestHeaders(headers)
 
 	token, err := p.GetToken()
 	if err != nil {
 		logger.SysError("Failed to get token: " + err.Error())
-		return nil
+		return nil, err
 	}
 
 	headers["Authorization"] = "Bearer " + token
+	return headers, nil
+}
 
-	return headers
+// handleTokenError 处理token获取失败的错误，检查是否匹配禁用通道关键词
+func (p *VertexAIProvider) handleTokenError(err error) *types.OpenAIErrorWithStatusCode {
+	errMsg := err.Error()
+
+	// 检查是否匹配禁用通道关键词
+	if common.DisableChannelKeywordsInstance.IsContains(errMsg) {
+		// 匹配关键词，返回非LocalError，允许重试
+		return common.StringErrorWrapper(errMsg, "vertexai_token_error", http.StatusInternalServerError)
+	} else {
+		// 不匹配关键词，返回LocalError，保持原有行为
+		return common.StringErrorWrapperLocal(errMsg, "vertexai_token_error", http.StatusInternalServerError)
+	}
 }
 
 func (p *VertexAIProvider) GetToken() (string, error) {
