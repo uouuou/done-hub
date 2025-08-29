@@ -23,6 +23,7 @@ import (
 	"embed"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -38,6 +39,16 @@ var buildFS embed.FS
 var indexPage []byte
 
 func main() {
+	if tz := os.Getenv("TZ"); tz != "" {
+		if loc, err := time.LoadLocation(tz); err == nil {
+			time.Local = loc
+		}
+	} else {
+		if loc, err := time.LoadLocation("Asia/Shanghai"); err == nil {
+			time.Local = loc
+		}
+	}
+
 	cli.InitCli()
 	config.InitConf()
 	if viper.GetString("log_level") == "debug" {
