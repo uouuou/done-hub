@@ -359,12 +359,13 @@ func validateAndFixFunctionCallSequence(contents []interface{}, isVertexAI bool)
 	return fixedContents
 }
 
-// cleanSchemaRecursively 递归清理 schema 对象中的 $schema 字段
+// cleanSchemaRecursively 递归清理 schema 对象中的 $schema 和 additionalProperties 字段
 func cleanSchemaRecursively(obj interface{}) {
 	switch v := obj.(type) {
 	case map[string]interface{}:
-		// 删除 $schema 字段
+		// 删除 Gemini API 不支持的字段
 		delete(v, "$schema")
+		delete(v, "additionalProperties")
 
 		// 递归处理所有值
 		for _, value := range v {

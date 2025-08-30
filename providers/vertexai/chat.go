@@ -61,10 +61,9 @@ func (p *VertexAIProvider) getChatRequest(request *types.ChatCompletionRequest) 
 		return nil, common.ErrorWrapperLocal(nil, "invalid_vertexai_config", http.StatusInternalServerError)
 	}
 
-	headers := p.GetRequestHeaders()
-
-	if headers == nil {
-		return nil, common.ErrorWrapperLocal(nil, "invalid_vertexai_config", http.StatusInternalServerError)
+	headers, err := p.getRequestHeadersInternal()
+	if err != nil {
+		return nil, p.handleTokenError(err)
 	}
 
 	vertexaiRequest, errWithCode := p.Category.ChatComplete(request)

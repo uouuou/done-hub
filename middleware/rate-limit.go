@@ -31,7 +31,7 @@ var (
 	DownloadRateLimitNum            = 10
 	DownloadRateLimitDuration int64 = 60
 
-	CriticalRateLimitNum            = 20
+	CriticalRateLimitNum            = 200
 	CriticalRateLimitDuration int64 = 20 * 60
 )
 
