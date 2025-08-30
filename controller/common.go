@@ -135,7 +135,7 @@ func validateAndUseInviteCodeForOAuth(c *gin.Context, tx *gorm.DB) (string, erro
 	session := sessions.Default(c)
 	inviteCodeInterface := session.Get("oauth_invite_code")
 	if inviteCodeInterface == nil {
-		return "", fmt.Errorf("管理员开启了邀请码注册，请提供邀请码")
+		return "", fmt.Errorf("NEED_INVITE_CODE:管理员开启了邀请码注册，请提供邀请码")
 	}
 
 	// 安全的类型断言

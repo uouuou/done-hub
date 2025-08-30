@@ -29,7 +29,7 @@ import { Formik } from 'formik';
 import useLogin from 'hooks/useLogin';
 import AnimateButton from 'ui-component/extended/AnimateButton';
 import WechatModal from 'views/Authentication/AuthForms/WechatModal';
-import OAuthInviteCodeDialog from 'components/OAuthInviteCodeDialog';
+
 
 // assets
 import Visibility from '@mui/icons-material/Visibility';
@@ -42,7 +42,7 @@ import Oidc from 'assets/images/icons/oidc.svg';
 import LinuxDoIcon from 'assets/images/icons/LinuxDoIcon';
 import { onGitHubOAuthClicked, onLarkOAuthClicked,onOIDCAuthClicked, onLinuxDoOAuthClicked } from 'utils/common';
 import { useTranslation } from 'react-i18next';
-import { API } from 'utils/api';
+
 
 // ============================|| FIREBASE - LOGIN ||============================ //
 
@@ -51,9 +51,7 @@ const LoginForm = ({ ...others }) => {
   const theme = useTheme();
   const { login, wechatLogin } = useLogin();
   const [openWechat, setOpenWechat] = useState(false);
-  const [openInviteCodeDialog, setOpenInviteCodeDialog] = useState(false);
-  const [currentOAuthProvider, setCurrentOAuthProvider] = useState('');
-  const [inviteCodeRequired, setInviteCodeRequired] = useState(false);
+
   const matchDownSM = useMediaQuery(theme.breakpoints.down('md'));
   const customization = useSelector((state) => state.customization);
   const siteInfo = useSelector((state) => state.siteInfo);
@@ -64,21 +62,7 @@ const LoginForm = ({ ...others }) => {
     tripartiteLogin = true;
   }
 
-  // 检查是否启用了邀请码注册（使用公开的status接口）
-  useEffect(() => {
-    const checkInviteCodeSetting = async () => {
-      try {
-        const res = await API.get('/api/status');
-        const { success, data } = res.data;
-        if (success) {
-          setInviteCodeRequired(data.invite_code_register === true);
-        }
-      } catch (error) {
-        console.error('Failed to check invite code setting:', error);
-      }
-    };
-    checkInviteCodeSetting();
-  }, []);
+
 
   const handleWechatOpen = () => {
     setOpenWechat(true);
@@ -90,14 +74,9 @@ const LoginForm = ({ ...others }) => {
 
   // 处理第三方登录点击
   const handleOAuthClick = (provider) => {
-    // 如果启用了邀请码注册，先显示邀请码输入对话框
-    if (inviteCodeRequired) {
-      setCurrentOAuthProvider(provider);
-      setOpenInviteCodeDialog(true);
-    } else {
-      // 直接执行第三方登录（遵循原有逻辑）
-      executeOAuthLogin(provider);
-    }
+    // 直接执行第三方登录，不预先要求邀请码
+    // 后端会在需要注册新用户时处理邀请码验证
+    executeOAuthLogin(provider);
   };
 
   // 执行第三方登录
@@ -120,11 +99,7 @@ const LoginForm = ({ ...others }) => {
     }
   };
 
-  // 确认邀请码后继续第三方登录
-  const handleInviteCodeConfirm = () => {
-    setOpenInviteCodeDialog(false);
-    executeOAuthLogin(currentOAuthProvider);
-  };
+
 
   const [showPassword, setShowPassword] = useState(false);
   const handleClickShowPassword = () => {
@@ -394,15 +369,7 @@ const LoginForm = ({ ...others }) => {
         )}
       </Formik>
 
-      {/* 邀请码对话框 - 仅在启用邀请码注册时显示 */}
-      {inviteCodeRequired && (
-        <OAuthInviteCodeDialog
-          open={openInviteCodeDialog}
-          onClose={() => setOpenInviteCodeDialog(false)}
-          onConfirm={handleInviteCodeConfirm}
-          provider={currentOAuthProvider}
-        />
-      )}
+
     </>
   );
 };
