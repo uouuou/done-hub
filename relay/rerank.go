@@ -4,6 +4,8 @@ import (
 	"done-hub/common"
 	"done-hub/common/config"
 	"done-hub/common/logger"
+	"done-hub/common/utils"
+	"done-hub/model"
 	providersBase "done-hub/providers/base"
 	"done-hub/types"
 	"fmt"
@@ -47,7 +49,25 @@ func RelayRerank(c *gin.Context) {
 		}
 
 		channel = relay.getProvider().GetChannel()
-		logger.LogError(c.Request.Context(), fmt.Sprintf("using channel #%d(%s) to retry (remain times %d)", channel.Id, channel.Name, i))
+
+		// 计算当前实际可用的渠道数量（包括当前失败的渠道）
+		groupName := c.GetString("token_group")
+		if groupName == "" {
+			groupName = c.GetString("group")
+		}
+		modelName := c.GetString("new_model")
+
+		// 构建包含当前失败渠道的过滤器
+		filters := buildChannelFilters(c, modelName)
+		// 添加当前失败的渠道到跳过列表中进行计算
+		skipChannelIds, _ := utils.GetGinValue[[]int](c, "skip_channel_ids")
+		skipChannelIds = append(skipChannelIds, channel.Id)
+		tempFilters := append(filters, model.FilterChannelId(skipChannelIds))
+
+		availableChannels := model.ChannelGroup.CountAvailableChannels(groupName, modelName, tempFilters...)
+
+		logger.LogError(c.Request.Context(), fmt.Sprintf("using channel #%d(%s) to retry (remain times %d, available channels %d)", channel.Id, channel.Name, i, availableChannels))
+
 		apiErr, done = RelayHandler(relay)
 		if apiErr == nil {
 			return

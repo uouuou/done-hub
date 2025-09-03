@@ -80,7 +80,25 @@ func Relay(c *gin.Context) {
 		}
 
 		channel = relay.getProvider().GetChannel()
-		logger.LogError(c.Request.Context(), fmt.Sprintf("using channel #%d(%s) to retry (remain times %d)", channel.Id, channel.Name, i))
+
+		// 计算当前实际可用的渠道数量（包括当前失败的渠道）
+		groupName := c.GetString("token_group")
+		if groupName == "" {
+			groupName = c.GetString("group")
+		}
+		modelName := c.GetString("new_model")
+
+		// 构建包含当前失败渠道的过滤器
+		filters := buildChannelFilters(c, modelName)
+		// 添加当前失败的渠道到跳过列表中进行计算
+		skipChannelIds, _ := utils.GetGinValue[[]int](c, "skip_channel_ids")
+		skipChannelIds = append(skipChannelIds, channel.Id)
+		tempFilters := append(filters, model.FilterChannelId(skipChannelIds))
+
+		availableChannels := model.ChannelGroup.CountAvailableChannels(groupName, modelName, tempFilters...)
+
+		logger.LogError(c.Request.Context(), fmt.Sprintf("using channel #%d(%s) to retry (remain times %d, available channels %d)", channel.Id, channel.Name, i, availableChannels))
+
 		apiErr, done = RelayHandler(relay)
 		if apiErr == nil {
 			metrics.RecordProvider(c, 200)
@@ -144,9 +162,17 @@ func shouldCooldowns(c *gin.Context, channel *model.Channel, apiErr *types.OpenA
 	modelName := c.GetString("new_model")
 	channelId := channel.Id
 
+	// 增加详细日志
+	logger.LogError(c.Request.Context(), fmt.Sprintf("shouldCooldowns check - Channel #%d, StatusCode: %d, ErrorType: %s, ErrorMessage: %s",
+		channelId, apiErr.StatusCode, apiErr.OpenAIError.Type, apiErr.OpenAIError.Message))
+
 	// 如果是频率限制，冻结通道
 	if apiErr.StatusCode == http.StatusTooManyRequests {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("Triggering cooldown for channel #%d, model: %s, duration: %d seconds",
+			channelId, modelName, config.RetryCooldownSeconds))
 		model.ChannelGroup.SetCooldowns(channelId, modelName)
+	} else {
+		logger.LogError(c.Request.Context(), fmt.Sprintf("No cooldown triggered - StatusCode %d is not 429", apiErr.StatusCode))
 	}
 
 	skipChannelIds, ok := utils.GetGinValue[[]int](c, "skip_channel_ids")

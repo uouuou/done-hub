@@ -3,6 +3,7 @@ package task
 import (
 	"done-hub/common/config"
 	"done-hub/common/logger"
+	"done-hub/common/utils"
 	"done-hub/metrics"
 	"done-hub/model"
 	"done-hub/relay/relay_util"
@@ -14,6 +15,23 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// buildTaskChannelFilters 为任务构建渠道过滤器列表
+func buildTaskChannelFilters(c *gin.Context) []model.ChannelsFilterFunc {
+	var filters []model.ChannelsFilterFunc
+
+	if skipChannelIds, ok := utils.GetGinValue[[]int](c, "skip_channel_ids"); ok {
+		filters = append(filters, model.FilterChannelId(skipChannelIds))
+	}
+
+	if types, exists := c.Get("allow_channel_type"); exists {
+		if allowTypes, ok := types.([]int); ok {
+			filters = append(filters, model.FilterChannelTypes(allowTypes))
+		}
+	}
+
+	return filters
+}
 
 func RelayTaskSubmit(c *gin.Context) {
 	var taskErr *base.TaskError
@@ -69,7 +87,24 @@ func RelayTaskSubmit(c *gin.Context) {
 		}
 
 		channel = taskAdaptor.GetProvider().GetChannel()
-		logger.LogError(c.Request.Context(), fmt.Sprintf("using channel #%d(%s) to retry (remain times %d)", channel.Id, channel.Name, i))
+
+		// 计算当前实际可用的渠道数量（包括当前失败的渠道）
+		groupName := c.GetString("token_group")
+		if groupName == "" {
+			groupName = c.GetString("group")
+		}
+		modelName := taskAdaptor.GetModelName()
+
+		// 构建包含当前失败渠道的过滤器
+		filters := buildTaskChannelFilters(c)
+		// 添加当前失败的渠道到跳过列表中进行计算
+		skipChannelIds, _ := utils.GetGinValue[[]int](c, "skip_channel_ids")
+		skipChannelIds = append(skipChannelIds, channel.Id)
+		tempFilters := append(filters, model.FilterChannelId(skipChannelIds))
+
+		availableChannels := model.ChannelGroup.CountAvailableChannels(groupName, modelName, tempFilters...)
+
+		logger.LogError(c.Request.Context(), fmt.Sprintf("using channel #%d(%s) to retry (remain times %d, available channels %d)", channel.Id, channel.Name, i, availableChannels))
 
 		taskErr = taskAdaptor.Relay()
 		if taskErr == nil {

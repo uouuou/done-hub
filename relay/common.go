@@ -140,18 +140,15 @@ func fetchChannelById(channelId int) (*model.Channel, error) {
 	return channel, nil
 }
 
-func fetchChannelByModel(c *gin.Context, modelName string) (*model.Channel, error) {
-	group := c.GetString("token_group")
-	skipOnlyChat := c.GetBool("skip_only_chat")
-	isStream := c.GetBool("is_stream")
-
+// buildChannelFilters 构建渠道过滤器列表
+func buildChannelFilters(c *gin.Context, modelName string) []model.ChannelsFilterFunc {
 	var filters []model.ChannelsFilterFunc
-	if skipOnlyChat {
+
+	if skipOnlyChat := c.GetBool("skip_only_chat"); skipOnlyChat {
 		filters = append(filters, model.FilterOnlyChat())
 	}
 
-	skipChannelIds, ok := utils.GetGinValue[[]int](c, "skip_channel_ids")
-	if ok {
+	if skipChannelIds, ok := utils.GetGinValue[[]int](c, "skip_channel_ids"); ok {
 		filters = append(filters, model.FilterChannelId(skipChannelIds))
 	}
 
@@ -161,9 +158,16 @@ func fetchChannelByModel(c *gin.Context, modelName string) (*model.Channel, erro
 		}
 	}
 
-	if isStream {
+	if isStream := c.GetBool("is_stream"); isStream {
 		filters = append(filters, model.FilterDisabledStream(modelName))
 	}
+
+	return filters
+}
+
+func fetchChannelByModel(c *gin.Context, modelName string) (*model.Channel, error) {
+	group := c.GetString("token_group")
+	filters := buildChannelFilters(c, modelName)
 
 	channel, err := model.ChannelGroup.NextByValidatedModel(group, modelName, filters...)
 	if err != nil {

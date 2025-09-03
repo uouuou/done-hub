@@ -356,6 +356,62 @@ func (cc *ChannelsChooser) GetChannel(channelId int) *Channel {
 	return nil
 }
 
+// CountAvailableChannels 计算指定分组和模型的可用渠道数量（排除禁用、冷却和过滤的渠道）
+func (cc *ChannelsChooser) CountAvailableChannels(group, modelName string, filters ...ChannelsFilterFunc) int {
+	cc.RLock()
+	defer cc.RUnlock()
+
+	if _, ok := cc.Rule[group]; !ok {
+		return 0
+	}
+
+	channelsPriority, ok := cc.Rule[group][modelName]
+	if !ok {
+		return 0
+	}
+
+	if len(channelsPriority) == 0 {
+		return 0
+	}
+
+	totalAvailable := 0
+	for _, priority := range channelsPriority {
+		totalAvailable += cc.countValidChannels(priority, filters, modelName)
+	}
+
+	return totalAvailable
+}
+
+// countValidChannels 计算指定渠道列表中的可用渠道数量
+// 与balancer方法使用相同的过滤逻辑
+func (cc *ChannelsChooser) countValidChannels(channelIds []int, filters []ChannelsFilterFunc, modelName string) int {
+	count := 0
+	for _, channelId := range channelIds {
+		choice, ok := cc.Channels[channelId]
+		if !ok || choice.Disable {
+			continue
+		}
+
+		if cc.IsInCooldown(channelId, modelName) {
+			continue
+		}
+
+		isSkip := false
+		for _, filter := range filters {
+			if filter(channelId, choice) {
+				isSkip = true
+				break
+			}
+		}
+		if isSkip {
+			continue
+		}
+
+		count++
+	}
+	return count
+}
+
 var ChannelGroup = ChannelsChooser{}
 
 func (cc *ChannelsChooser) Load() {
