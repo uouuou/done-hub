@@ -26,6 +26,14 @@ func Distribute() func(c *gin.Context) {
 			return
 		}
 
+		// 验证用户是否有权使用该分组
+		if tokenGroup != userGroup {
+			if !groupRatio.Public {
+				abortWithMessage(c, http.StatusForbidden, fmt.Sprintf("无权使用分组 %s", tokenGroup))
+				return
+			}
+		}
+
 		c.Set("group_ratio", groupRatio.Ratio)
 		c.Next()
 	}
