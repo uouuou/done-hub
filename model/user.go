@@ -2,6 +2,7 @@ package model
 
 import (
 	"done-hub/common"
+	"done-hub/common/cache"
 	"done-hub/common/config"
 	"done-hub/common/logger"
 	"done-hub/common/redis"
@@ -235,16 +236,63 @@ func (user *User) Update(updatePassword bool) error {
 		config.RootUserEmail = user.Email
 	}
 
-	// 删除缓存
-	if config.RedisEnabled {
-		redis.RedisDel(fmt.Sprintf(UserGroupCacheKey, user.Id))
+	// 删除缓存（支持两套缓存机制）
+	if err == nil {
+		ClearUserGroupAndTokensCache(user.Id)
 	}
 
 	return err
 }
 
 func UpdateUser(id int, fields map[string]interface{}) error {
-	return DB.Model(&User{}).Where("id = ?", id).Updates(fields).Error
+	err := DB.Model(&User{}).Where("id = ?", id).Updates(fields).Error
+	if err != nil {
+		return err
+	}
+
+	// 如果更新了分组字段，清理缓存
+	if _, hasGroup := fields["group"]; hasGroup {
+		ClearUserGroupAndTokensCache(id)
+	}
+
+	return nil
+}
+
+// ClearUserGroupAndTokensCache 清理用户分组和所有Token的缓存
+func ClearUserGroupAndTokensCache(userId int) {
+	if !config.RedisEnabled {
+		return
+	}
+
+	// 清理用户分组缓存
+	userGroupKey := fmt.Sprintf(UserGroupCacheKey, userId)
+	if err := redis.RedisDel(userGroupKey); err != nil {
+		logger.SysError(fmt.Sprintf("清理用户分组Redis缓存失败 userId=%d: %v", userId, err))
+	}
+	if err := cache.DeleteCache(userGroupKey); err != nil {
+		logger.SysError(fmt.Sprintf("清理用户分组缓存失败 userId=%d: %v", userId, err))
+	}
+
+	// 获取用户所有Token的Key
+	var tokenKeys []string
+	err := DB.Model(&Token{}).Where("user_id = ?", userId).Pluck("key", &tokenKeys).Error
+	if err != nil {
+		logger.SysError(fmt.Sprintf("获取用户Token列表失败 userId=%d: %v", userId, err))
+		return
+	}
+
+	// 清理每个Token的缓存
+	for _, tokenKey := range tokenKeys {
+		if tokenKey != "" {
+			cacheKey := fmt.Sprintf(UserTokensKey, tokenKey)
+			if err := redis.RedisDel(cacheKey); err != nil {
+				logger.SysError(fmt.Sprintf("清理Token Redis缓存失败 key=%s: %v", tokenKey, err))
+			}
+			if err := cache.DeleteCache(cacheKey); err != nil {
+				logger.SysError(fmt.Sprintf("清理Token缓存失败 key=%s: %v", tokenKey, err))
+			}
+		}
+	}
 }
 
 func (user *User) Delete() error {

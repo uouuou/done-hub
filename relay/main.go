@@ -73,56 +73,82 @@ func Relay(c *gin.Context) {
 	}
 	modelName := c.GetString("new_model")
 	totalChannelsAtStart := model.ChannelGroup.CountAvailableChannels(groupName, modelName)
+
+	// 实际重试次数 = min(配置的重试数, 可用渠道数)
+	actualRetryTimes := retryTimes
+	if totalChannelsAtStart < retryTimes {
+		actualRetryTimes = totalChannelsAtStart
+	}
+
 	c.Set("total_channels_at_start", totalChannelsAtStart)
+	c.Set("actual_retry_times", actualRetryTimes)
 	c.Set("attempt_count", 1) // 初始化尝试计数
 
+	// 记录初始失败 - 使用OpenAI风格的结构化日志
+	logger.LogError(c.Request.Context(), fmt.Sprintf("retry_start model=%s total_channels=%d config_max_retries=%d actual_max_retries=%d initial_error=\"%s\" status_code=%d",
+		modelName, totalChannelsAtStart, retryTimes, actualRetryTimes, apiErr.OpenAIError.Message, apiErr.StatusCode))
+
 	for i := retryTimes; i > 0; i-- {
-		// 冻结通道
-		shouldCooldowns(c, channel, apiErr)
+		// 冻结通道并记录是否应用了冷却
+		cooldownApplied := shouldCooldowns(c, channel, apiErr)
 
 		if time.Since(startTime) > timeout {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("retry_timeout elapsed_time=%.2fs timeout=%.2fs",
+				time.Since(startTime).Seconds(), timeout.Seconds()))
 			apiErr = common.StringErrorWrapperLocal("重试超时，上游负载已饱和，请稍后再试", "system_error", http.StatusTooManyRequests)
 			break
 		}
 
 		if err := relay.setProvider(relay.getOriginalModel()); err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("retry_provider_error error=\"%s\"", err.Error()))
 			break
 		}
 
 		channel = relay.getProvider().GetChannel()
 
-		// 计算渠道信息用于日志显示
-		groupName := c.GetString("token_group")
-		if groupName == "" {
-			groupName = c.GetString("group")
-		}
-		modelName := c.GetString("new_model")
-
-		// 使用请求开始时缓存的总渠道数，保持一致性
-		totalChannels := c.GetInt("total_channels_at_start")
-
 		// 更新尝试计数
 		attemptCount := c.GetInt("attempt_count")
 		c.Set("attempt_count", attemptCount+1)
 
-		// 计算剩余可重试的渠道数（不包括当前渠道，因为当前渠道正在使用）
+		// 计算剩余渠道数
 		filters := buildChannelFilters(c, modelName)
 		skipChannelIds, _ := utils.GetGinValue[[]int](c, "skip_channel_ids")
 		tempFilters := append(filters, model.FilterChannelId(skipChannelIds))
 		remainChannels := model.ChannelGroup.CountAvailableChannels(groupName, modelName, tempFilters...)
 
-		logger.LogError(c.Request.Context(), fmt.Sprintf("using channel #%d(%s) to retry (attempt %d/%d, remain channels %d, total channels %d)", channel.Id, channel.Name, attemptCount, totalChannels, remainChannels, totalChannels))
+		// 获取实际重试次数
+		actualRetryTimes := c.GetInt("actual_retry_times")
+
+		// 记录重试尝试 - 按照OpenAI规范的结构化日志
+		logger.LogError(c.Request.Context(), fmt.Sprintf("retry_attempt attempt=%d/%d channel_id=%d channel_name=\"%s\" remaining_channels=%d cooldown_applied=%t",
+			attemptCount, actualRetryTimes, channel.Id, channel.Name, remainChannels, cooldownApplied))
 
 		apiErr, done = RelayHandler(relay)
 		if apiErr == nil {
+			// 重试成功
+			logger.LogError(c.Request.Context(), fmt.Sprintf("retry_success attempt=%d/%d channel_id=%d final_channel=\"%s\"",
+				attemptCount, actualRetryTimes, channel.Id, channel.Name))
 			metrics.RecordProvider(c, 200)
 			return
 		}
+
+		// 记录重试失败
+		logger.LogError(c.Request.Context(), fmt.Sprintf("retry_failed attempt=%d/%d channel_id=%d status_code=%d error_type=\"%s\" error=\"%s\"",
+			attemptCount, actualRetryTimes, channel.Id, apiErr.StatusCode, apiErr.OpenAIError.Type, apiErr.OpenAIError.Message))
+
 		go processChannelRelayError(c.Request.Context(), channel.Id, channel.Name, apiErr, channel.Type)
 		if done || !shouldRetry(c, apiErr, channel.Type) {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("retry_stop_condition attempt=%d/%d done=%t should_retry=%t",
+				attemptCount, actualRetryTimes, done, shouldRetry(c, apiErr, channel.Type)))
 			break
 		}
 	}
+
+	// 记录最终失败
+	finalAttempt := c.GetInt("attempt_count")
+	actualRetryTimes = c.GetInt("actual_retry_times")
+	logger.LogError(c.Request.Context(), fmt.Sprintf("retry_exhausted total_attempts=%d actual_max_retries=%d config_max_retries=%d final_error=\"%s\" status_code=%d",
+		finalAttempt, actualRetryTimes, retryTimes, apiErr.OpenAIError.Message, apiErr.StatusCode))
 
 	if apiErr != nil {
 		if heartbeat != nil && heartbeat.IsSafeWriteStream() {
@@ -172,21 +198,17 @@ func RelayHandler(relay RelayBaseInterface) (err *types.OpenAIErrorWithStatusCod
 	return
 }
 
-func shouldCooldowns(c *gin.Context, channel *model.Channel, apiErr *types.OpenAIErrorWithStatusCode) {
+func shouldCooldowns(c *gin.Context, channel *model.Channel, apiErr *types.OpenAIErrorWithStatusCode) bool {
 	modelName := c.GetString("new_model")
 	channelId := channel.Id
-
-	// 增加详细日志
-	logger.LogError(c.Request.Context(), fmt.Sprintf("shouldCooldowns check - Channel #%d, StatusCode: %d, ErrorType: %s, ErrorMessage: %s",
-		channelId, apiErr.StatusCode, apiErr.OpenAIError.Type, apiErr.OpenAIError.Message))
+	cooldownApplied := false
 
 	// 如果是频率限制，冻结通道
 	if apiErr.StatusCode == http.StatusTooManyRequests {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("Triggering cooldown for channel #%d, model: %s, duration: %d seconds",
-			channelId, modelName, config.RetryCooldownSeconds))
 		model.ChannelGroup.SetCooldowns(channelId, modelName)
-	} else {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("No cooldown triggered - StatusCode %d is not 429", apiErr.StatusCode))
+		cooldownApplied = true
+		logger.LogError(c.Request.Context(), fmt.Sprintf("channel_cooldown channel_id=%d model=\"%s\" duration=%ds reason=\"rate_limit\"",
+			channelId, modelName, config.RetryCooldownSeconds))
 	}
 
 	skipChannelIds, ok := utils.GetGinValue[[]int](c, "skip_channel_ids")
@@ -195,8 +217,9 @@ func shouldCooldowns(c *gin.Context, channel *model.Channel, apiErr *types.OpenA
 	}
 
 	skipChannelIds = append(skipChannelIds, channelId)
-
 	c.Set("skip_channel_ids", skipChannelIds)
+
+	return cooldownApplied
 }
 
 // applies pre-mapping before setRequest to ensure modifications take effect
